@@ -13,8 +13,17 @@ $obj = Join-Path $repo 'obj'
 $out = Join-Path $repo 'artifacts'
 New-Item -ItemType Directory -Force $obj, $out | Out-Null
 
-$csc = Get-ChildItem 'C:\Program Files\Microsoft Visual Studio', 'C:\Program Files (x86)\Microsoft Visual Studio' -Recurse -Filter csc.exe -ErrorAction SilentlyContinue |
-  Where-Object FullName -match '\\MSBuild\\Current\\Bin\\Roslyn\\csc\.exe$' | Select-Object -First 1 -ExpandProperty FullName
+# Find the C# compiler: vswhere (ships with every Visual Studio install, including GitHub's build servers) is instant;
+# a folder search is the fallback.
+$csc = $null
+$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+if (Test-Path $vswhere) {
+  $csc = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\Roslyn\csc.exe' | Select-Object -First 1
+}
+if (-not $csc) {
+  $csc = Get-ChildItem 'C:\Program Files\Microsoft Visual Studio', 'C:\Program Files (x86)\Microsoft Visual Studio' -Recurse -Filter csc.exe -ErrorAction SilentlyContinue |
+    Where-Object FullName -match '\\MSBuild\\Current\\Bin\\Roslyn\\csc\.exe$' | Select-Object -First 1 -ExpandProperty FullName
+}
 if (-not $csc) { throw 'Roslyn csc.exe not found. Install Visual Studio 2022 or "Build Tools for Visual Studio".' }
 
 # Version comes from version.txt (e.g. 0.1.0); CI can override with $env:FW_VERSION (e.g. from a git tag).

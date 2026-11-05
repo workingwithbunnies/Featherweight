@@ -1,0 +1,52 @@
+# Makes a release when a version tag (e.g. v0.1.0) is pushed:
+# builds on GitHub's servers, computes a SHA-256 checksum, and creates a DRAFT release
+# with the notes from CHANGELOG.md. Nothing is public until a maintainer clicks "Publish release".
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        shell: powershell
+        env:
+          FW_VERSION: ${{ github.ref_name }}
+        run: ./build.ps1
+
+      - name: Checksum and release notes
+        shell: powershell
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          $hash = (Get-FileHash artifacts/Featherweight.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  Featherweight.exe" | Set-Content artifacts/Featherweight.exe.sha256 -Encoding ascii
+
+          # Take this version's section from CHANGELOG.md ("## [x.y.z]" up to the next "## [").
+          $lines = Get-Content CHANGELOG.md
+          $start = ($lines | Select-String -Pattern ("^## \[" + [regex]::Escape($version) + "\]") | Select-Object -First 1).LineNumber
+          if ($start) {
+            $rest = $lines[$start..($lines.Count - 1)]
+            $end = ($rest | Select-String -Pattern '^## \[' | Select-Object -First 1).LineNumber
+            $notes = if ($end) { $rest[0..($end - 2)] } else { $rest }
+          } else {
+            $notes = @("See CHANGELOG.md for details.")
+          }
+          $notes += @("", "---", "**SHA-256** of ``Featherweight.exe``: ``$hash``",
+            "", "Windows may show *Windows protected your PC* for new downloads: click **More info → Run anyway**.")
+          $notes | Set-Content release-notes.md -Encoding utf8
+
+      - name: Create draft release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create '${{ github.ref_name }}' artifacts/Featherweight.exe artifacts/Featherweight.exe.sha256 `
+            --draft --title "Featherweight ${{ github.ref_name }}" --notes-file release-notes.md

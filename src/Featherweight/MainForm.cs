@@ -8,7 +8,7 @@ namespace Featherweight
 {
     class MainForm : Form
     {
-        readonly Panel pageHost;
+        readonly Panel pageHost, content;
         readonly Dictionary<string, Page> pages = new Dictionary<string, Page>();
         readonly Dictionary<string, Button> nav = new Dictionary<string, Button>();
 
@@ -21,7 +21,7 @@ namespace Featherweight
             AutoScaleMode = AutoScaleMode.Dpi;
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
-            var content = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Bg };
+            content = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Bg };
             pageHost = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Bg };
             content.Controls.Add(pageHost);
             if (!Admin.IsAdmin) content.Controls.Add(Banner());
@@ -36,6 +36,7 @@ namespace Featherweight
             pages["Clean"] = new CleanPage();
             pages["Snapshots"] = new SnapshotsPage();
             pages["Security"] = new SecurityPage();
+            pages["Settings"] = new SettingsPage();
             foreach (var p in pages.Values) { p.Visible = false; pageHost.Controls.Add(p); }
 
             var footer = new Label
@@ -48,7 +49,8 @@ namespace Featherweight
             sidebar.Controls.Add(footer);
             var labels = new[] {
                 Tuple.Create("Dashboard", "Dashboard"), Tuple.Create("Clean", "Clean RAM"), Tuple.Create("Optimize", "Optimize"),
-                Tuple.Create("Backups", "Backups / Undo"), Tuple.Create("Snapshots", "Snapshots"), Tuple.Create("Security", "Security check") };
+                Tuple.Create("Backups", "Backups / Undo"), Tuple.Create("Snapshots", "Snapshots"), Tuple.Create("Security", "Security check"),
+                Tuple.Create("Settings", "Settings & about") };
             foreach (var t in labels.Reverse()) sidebar.Controls.Add(NavButton(t.Item1, t.Item2));
             var brand = new Label
             {
@@ -60,6 +62,34 @@ namespace Featherweight
             sidebar.Controls.Add(brand);
 
             ShowPage(startPage != null && pages.ContainsKey(startPage) ? startPage : "Dashboard");
+            Shown += async (s, e) => await AutomaticUpdateCheck();
+        }
+
+        /// <summary>Once a day, only if the user allowed it on the welcome screen / in Settings.</summary>
+        async System.Threading.Tasks.Task AutomaticUpdateCheck()
+        {
+            if (!Updates.AutomaticCheckDue) return;
+            string error = null;
+            var info = await System.Threading.Tasks.Task.Run(() => Updates.Check(out error));
+            Settings.LastUpdateCheck = DateTime.Now.ToString("s"); Settings.Save();
+            if (info != null && Updates.IsNewer(info.Version, AppVersion) && info.Version != Settings.SkippedVersion)
+                content.Controls.Add(UpdateBanner(info)); // docks on top, above the admin banner
+        }
+
+        Control UpdateBanner(UpdateInfo info)
+        {
+            var bar = new Panel { Dock = DockStyle.Top, Height = 46, BackColor = Color.FromArgb(222, 236, 252), Padding = new Padding(20, 8, 16, 8) };
+            var get = Theme.Button("See what's new", true); get.Dock = DockStyle.Right;
+            var later = Theme.Button("Not now"); later.Dock = DockStyle.Right;
+            get.Click += (s, e) => { try { System.Diagnostics.Process.Start(info.Url); } catch { } };
+            later.Click += (s, e) => { Settings.SkippedVersion = info.Version; Settings.Save(); bar.Visible = false; };
+            var lbl = new Label
+            {
+                Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, ForeColor = Theme.Text, UseMnemonic = false,
+                Text = "Featherweight " + info.Version + " is available (you have " + AppVersion + ")."
+            };
+            bar.Controls.Add(lbl); bar.Controls.Add(later); bar.Controls.Add(get);
+            return bar;
         }
 
         Control Banner()
@@ -96,7 +126,8 @@ namespace Featherweight
             var b = new Button
             {
                 Dock = DockStyle.Top, Height = 42, Text = "    " + text, TextAlign = ContentAlignment.MiddleLeft, FlatStyle = FlatStyle.Flat,
-                ForeColor = Theme.SidebarText, BackColor = Theme.Sidebar, Font = Theme.Base, Cursor = Cursors.Hand, UseVisualStyleBackColor = false
+                ForeColor = Theme.SidebarText, BackColor = Theme.Sidebar, Font = Theme.Base, Cursor = Cursors.Hand, UseVisualStyleBackColor = false,
+                UseMnemonic = false // show "&" literally ("Settings & about")
             };
             b.FlatAppearance.BorderSize = 0;
             b.FlatAppearance.MouseOverBackColor = Theme.SidebarHover;
