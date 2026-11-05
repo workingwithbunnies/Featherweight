@@ -89,19 +89,53 @@ namespace Featherweight
             h("Optimizations");
             Safe(sb, () =>
             {
-                var opts = Catalog.Load();
+                var opts = Catalog.LoadWithDiscovered(w => sb.AppendLine("note: " + w));
                 Catalog.Evaluate(opts);
                 foreach (var p in new[] { "hypervVms", "firmwareViaWindowsUpdate", "phonePaired" })
                 {
                     var r = Probes.Get(p);
                     sb.AppendLine("check " + p + ": " + (r == null ? "?" : r.Value + " (" + r.Text + ")"));
                 }
-                foreach (var o in opts)
+                foreach (var o in opts.Where(x => !x.Discovered))
                 {
                     if (!o.Present) { sb.AppendLine("- " + o.Id + ": not on this PC"); continue; }
                     sb.AppendLine("- " + o.Id + ": " + o.State + ", suggested " + o.Verdict + (o.IsAdvanced ? " (advanced)" : "") + ", running " + o.RunningCount + " process(es) " + o.LiveMB.ToString("0") + " MB");
                     foreach (var d in o.Details) sb.AppendLine("    " + d);
                 }
+                h("Found on this PC, not reviewed (what the Optimize page lists under each company)");
+                foreach (var o in opts.Where(x => x.Discovered).OrderBy(x => x.Category).ThenBy(x => x.Title))
+                {
+                    sb.AppendLine("- [" + o.Category + "] " + o.Kind + ": " + o.Title + " — " + o.State + ", running " + o.RunningCount + " process(es) " + o.LiveMB.ToString("0") + " MB");
+                    foreach (var p in o.ExePaths) sb.AppendLine("    program: " + p);
+                    foreach (var d in o.Details) sb.AppendLine("    " + d);
+                }
+            });
+
+            // Raw lists that help add reviewed catalog entries for new brands (no personal data: program paths are redacted below).
+            h("Services from other companies (every start type)");
+            Safe(sb, () =>
+            {
+                string win = Environment.GetFolderPath(Environment.SpecialFolder.Windows) + "\\";
+                using (var root = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services"))
+                    foreach (var n in root.GetSubKeyNames().OrderBy(x => x))
+                        using (var k = root.OpenSubKey(n))
+                        {
+                            if (k == null || (Convert.ToInt32(k.GetValue("Type", 0)) & 0x30) == 0) continue;
+                            string exe = Publisher.ExeFromCommand(k.GetValue("ImagePath") as string);
+                            if (exe == null || exe.StartsWith(win, StringComparison.OrdinalIgnoreCase)) continue;
+                            string brand = Publisher.Of(exe);
+                            if (Publisher.IsMicrosoft(brand)) continue;
+                            int start = Convert.ToInt32(k.GetValue("Start", -1));
+                            string startText = start == 2 ? (Convert.ToInt32(k.GetValue("DelayedAutostart", 0)) == 1 ? "auto (delayed)" : "auto") : start == 3 ? "manual" : start == 4 ? "disabled" : start.ToString();
+                            sb.AppendLine("- [" + brand + "] " + n + " — " + startText + (Engine.ServiceRunning(n) ? ", running" : ", stopped") + " — " + exe);
+                        }
+            });
+
+            h("Memory by company right now");
+            Safe(sb, () =>
+            {
+                foreach (var g in ProcScan.Group(ProcScan.Processes()).Where(g => g.Count > 0).OrderByDescending(g => g.PrivMB))
+                    sb.AppendLine(string.Format("- {0}: {1} process(es), {2:0} MB private — {3}", g.Group, g.Count, g.PrivMB, g.Names));
             });
 
             h("Backups");

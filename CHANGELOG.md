@@ -36,7 +36,15 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 - Dashboard groups memory by the company that made each program (HP, AMD, Lenovo, Realtek…), so other brands
   no longer end up in "Everything else".
 
+- Export diagnostics also lists what Optimize found, every service from other companies, and memory by company,
+  so a report from a new brand of PC has everything needed to add reviewed entries for it.
+
+### Changed
+- New welcome screen: a header with the logo, and three cards (what it does, what it never does, good to know).
+
 ### Fixed
+- The "Restart as administrator" (and update) banner buttons no longer have their text cut off.
+- The security check no longer warns about Featherweight itself being unsigned; it says so as information instead.
 - Items that are a setting in another app (such as the NVIDIA overlay) show *Running* / *Not running* and are no
   longer counted as "optimized" or as memory saved, since Featherweight didn't switch them.
 

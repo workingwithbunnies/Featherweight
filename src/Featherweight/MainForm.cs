@@ -78,32 +78,43 @@ namespace Featherweight
 
         Control UpdateBanner(UpdateInfo info)
         {
-            var bar = new Panel { Dock = DockStyle.Top, Height = 46, BackColor = Color.FromArgb(222, 236, 252), Padding = new Padding(20, 8, 16, 8) };
-            var get = Theme.Button("See what's new", true); get.Dock = DockStyle.Right;
-            var later = Theme.Button("Not now"); later.Dock = DockStyle.Right;
+            var get = Theme.Button("See what's new", true);
+            var later = Theme.Button("Not now");
+            var bar = BannerBar(Color.FromArgb(222, 236, 252), "Featherweight " + info.Version + " is available (you have " + AppVersion + ").", later, get);
             get.Click += (s, e) => { try { System.Diagnostics.Process.Start(info.Url); } catch { } };
             later.Click += (s, e) => { Settings.SkippedVersion = info.Version; Settings.Save(); bar.Visible = false; };
-            var lbl = new Label
-            {
-                Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, ForeColor = Theme.Text, UseMnemonic = false,
-                Text = "Featherweight " + info.Version + " is available (you have " + AppVersion + ")."
-            };
-            bar.Controls.Add(lbl); bar.Controls.Add(later); bar.Controls.Add(get);
             return bar;
         }
 
         Control Banner()
         {
-            var bar = new Panel { Dock = DockStyle.Top, Height = 46, BackColor = Theme.Banner, Padding = new Padding(20, 8, 16, 8) };
             var btn = Theme.Button("Restart as administrator", true);
-            btn.Dock = DockStyle.Right;
             btn.Click += (s, e) => { if (!Admin.RestartElevated(CurrentPage)) MessageBox.Show(this, "Windows did not grant administrator rights.", "Featherweight"); };
-            var lbl = new Label
+            return BannerBar(Theme.Banner, "Running without administrator rights. Viewing works; applying, undoing and cleaning RAM need admin.", btn);
+        }
+
+        /// <summary>
+        /// A strip across the top with a message and buttons on the right. The buttons keep their natural size and the
+        /// strip grows to fit them, so their text is never cut off (it was at some display scales).
+        /// </summary>
+        static Panel BannerBar(Color back, string text, params Button[] buttons)
+        {
+            // A table sizes itself to its contents: message on the left, buttons on the right, both vertically centred.
+            var bar = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, ForeColor = Theme.Text,
-                Text = "Running without administrator rights. Viewing works; applying, undoing and cleaning RAM need admin."
+                Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = back,
+                Padding = new Padding(20, 7, 16, 7), MinimumSize = new Size(0, 46), ColumnCount = buttons.Length + 1, RowCount = 1
             };
-            bar.Controls.Add(lbl); bar.Controls.Add(btn);
+            bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            bar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            var lbl = new Label { AutoSize = true, Anchor = AnchorStyles.Left | AnchorStyles.Right, ForeColor = Theme.Text, UseMnemonic = false, Text = text, Margin = new Padding(0, 0, 12, 0) };
+            bar.Controls.Add(lbl, 0, 0);
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+                buttons[i].Anchor = AnchorStyles.Right; buttons[i].Margin = new Padding(8, 0, 0, 0);
+                bar.Controls.Add(buttons[i], i + 1, 0);
+            }
             return bar;
         }
 
