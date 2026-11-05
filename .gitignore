@@ -10,9 +10,13 @@ backups/
 snapshots/
 logs/
 optimizer-state.json
+settings.json
 custom-optimizations.json
 portable
 portable.txt
+
+# Personal notes for AI assistants (the shared project guide is CLAUDE.md)
+CLAUDE.local.md
 
 # Editors / OS
 .vs/
