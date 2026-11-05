@@ -3,6 +3,4 @@ contact_links:
   - name: Questions and help
     url: https://github.com/workingwithbunnies/Featherweight/discussions
     about: Not sure if it's a bug? Ask in Discussions first.
-  - name: Report a security problem privately
-    url: https://github.com/workingwithbunnies/Featherweight/security/advisories/new
-    about: Please don't post security issues publicly. See SECURITY.md.
+# Security reports: GitHub adds its own "Report a security vulnerability" entry automatically (from SECURITY.md).

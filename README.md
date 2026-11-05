@@ -175,6 +175,13 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 The exe appears in `artifacts\`.
 
+## How it's built
+
+Featherweight is made by [@workingwithbunnies](https://github.com/workingwithbunnies) together with
+[Claude](https://claude.com/claude-code), Anthropic's AI coding assistant, which writes and tests much of the code.
+Commits it helped with are marked with Claude as co-author, so you can see that throughout the history.
+Every change is still reviewed, tested on real PCs, and released by a human.
+
 ## License
 
 [MIT](LICENSE): free to use, change and share.
