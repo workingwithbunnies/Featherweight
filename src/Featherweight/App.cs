@@ -20,6 +20,8 @@ namespace Featherweight
         public static string Snapshots { get { return Path.Combine(Root, "snapshots"); } }
         public static string Logs { get { return Path.Combine(Root, "logs"); } }
         public static string CustomCatalog { get { return Path.Combine(Root, "custom-optimizations.json"); } }
+        /// <summary>Data folder as shown on screen: no user name in it, since people share screenshots.</summary>
+        public static string Display { get { return Portable ? "the folder next to Featherweight.exe" : @"%LocalAppData%\Featherweight"; } }
         public static void Ensure() { foreach (var d in new[] { Backups, Snapshots, Logs }) Directory.CreateDirectory(d); }
         public static void Open(string dir) { Directory.CreateDirectory(dir); Process.Start("explorer.exe", "\"" + dir + "\""); }
     }
@@ -112,8 +114,10 @@ namespace Featherweight
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.ThreadException += (s, e) => MessageBox.Show(e.Exception.ToString(), "Featherweight error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Crash.Install(); // friendly error dialog + crash.log instead of a raw .NET error box
             Paths.Ensure();
+            Settings.Load();
+            if (!Settings.FirstRunDone) using (var w = new WelcomeForm()) w.ShowDialog();
             string page = args.Where(a => a.StartsWith("--page=")).Select(a => a.Substring(7)).FirstOrDefault();
             Application.Run(new MainForm(page));
         }

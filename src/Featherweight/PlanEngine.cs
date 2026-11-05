@@ -290,6 +290,8 @@ namespace Featherweight
                 { "Plan", plan.File }, { "PlanName", plan.Name }, { "Time", DateTime.Now.ToString("s") }, { "Items", done } });
 
             log((dryRun ? "DRY RUN — nothing will be changed. " : "") + "Plan: " + plan.Name);
+            // Second safety net: a System Restore point before anything actually changes.
+            if (!dryRun && items.Any(it => { string x; return Check(it, out x) == ItemState.NotApplied; })) RestorePoint.Ensure(log);
             int ok = 0, skipped = 0, failed = 0;
             foreach (var it in items)
             {

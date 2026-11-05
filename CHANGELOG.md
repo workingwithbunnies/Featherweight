@@ -20,6 +20,14 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
   needs an extra confirmation.
 - Dell TechHub agents are matched by program name, so they're found across Dell software versions.
 - `docs/CATALOG.md`: guide to adding optimizations without writing code.
+- A System Restore point is created before changes (a recent one is reused; can be turned off in Settings).
+- Welcome screen on first start: what the app does and never does, and the choice to check for updates.
+- Optional update check (at most once a day) with a banner when a new version is available.
+- Settings & about page: version, update check, restore points, data folder, links.
+- Export diagnostics: a bug-report text file with user and PC names removed, opened for review before sharing.
+- Friendly error dialog and `crash.log` instead of raw .NET errors; details are copied for bug reports.
+- Automatic builds on GitHub for every push, and draft releases with a SHA-256 checksum for version tags.
+- Code of conduct.
 
 ### Removed
 - "Resume from phone" no longer writes a device-management (MDM) policy key; it only uses the per-user setting.

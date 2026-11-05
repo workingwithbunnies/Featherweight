@@ -71,10 +71,10 @@ Featherweight changes Windows settings, so it's built around a few promises:
 | | |
 |---|---|
 | ✅ **Shows before it changes** | Every item lists exactly what it changes ("What it changes"). |
-| ✅ **Backs up first** | Original values are saved before anything is touched. |
+| ✅ **Backs up first** | Original values are saved before anything is touched, plus a Windows System Restore point as a second safety net. |
 | ✅ **Always undoable** | Restore default, or undo a whole batch, any time. |
 | ✅ **Asks first** | Changing things needs administrator permission; viewing doesn't. |
-| ✅ **No telemetry** | No tracking, no analytics, no accounts. It doesn't connect to the internet. |
+| ✅ **No telemetry** | No tracking, no analytics, no accounts. The only connection is an optional daily update check, which you choose on first start. |
 | ❌ **Never touches security** | It will never turn off Windows Update, Microsoft Defender or other security features. |
 | ❌ **No scare tactics** | No fake "PC health score", no registry cleaner, no driver updater. |
 
@@ -144,8 +144,9 @@ Windows. Viewing information doesn't need admin rights.
 <details>
 <summary><b>Does it send any data anywhere?</b></summary>
 
-No. Featherweight has no telemetry and doesn't connect to the internet. (A planned "check for updates" button
-will be the only exception, and it will be possible to turn it off.)
+No. Featherweight has no telemetry. The only connection it makes is an optional update check: at most once a
+day it asks GitHub for the latest version number. You choose this on first start and can change it any time in
+**Settings & about**. Nothing about you or your PC is sent, and it never downloads anything by itself.
 </details>
 
 ## Supported systems
@@ -159,7 +160,7 @@ will be the only exception, and it will be possible to turn it off.)
 ## Contributing
 
 You don't need to code to help:
-- 🐞 [Report a bug](../../issues/new/choose)
+- 🐞 [Report a bug](../../issues/new/choose). Tip: **Settings & about → Export diagnostics** creates a report you can attach, with your user and PC name removed
 - 💡 [Suggest an idea](../../issues/new/choose)
 - 🖥️ [Ask for your PC's apps to be supported](../../issues/new/choose); usually a list of process names is all that's needed
 - 📄 Add an optimization yourself: it's just JSON ([guide](docs/CATALOG.md))

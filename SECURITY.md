@@ -26,5 +26,6 @@ Only the latest release receives security fixes.
 
 To make reviewing easier:
 - It changes only what's listed in the Optimize page's "What it changes" section, and saves the original values first.
-- It makes **no** network requests. (A planned update check will be the only one, and it will be possible to turn it off.) No telemetry.
+- Its only network request is an optional update check (at most once a day) to `api.github.com`, asking for the latest
+  release. The user chooses it on first start and can turn it off in Settings. No telemetry. It never downloads or installs anything by itself.
 - It doesn't install drivers or services, and doesn't run at startup.

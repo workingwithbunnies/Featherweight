@@ -7,9 +7,9 @@ Order is roughly priority. Users are welcome to suggest more in GitHub Issues.
 
 ## Before the first public release (v1.0)
 
-These are about one promise: *it works correctly and safely on anyone's PC, not just the one it was built on.*
+✅ = done (in the next release). These are about one promise: *it works correctly and safely on anyone's PC, not just the one it was built on.*
 
-### 1. Catalog v2: decide per PC, not per laptop
+### 1. Catalog v2: decide per PC, not per laptop ✅
 **Why:** today's list was written for one specific laptop. On someone else's PC, "turn off AlienFX" could kill RGB
 lighting they love, and "turn off Hyper-V VM manager" could break their virtual machines.
 **What:** every optimization gets *conditions* (e.g. "only recommend if no Hyper-V VMs exist") and a level:
@@ -20,22 +20,22 @@ lighting they love, and "turn off Hyper-V VM manager" could break their virtual 
 Descriptions become generic ("If your keyboard only has a single colour…") instead of "this laptop".
 **Cost:** moderate. **Risk if skipped:** the biggest one; wrong advice on other PCs.
 
-### 2. System Restore point before the first change
+### 2. System Restore point before the first change ✅
 **Why:** a second safety net on top of our own backups. If anything ever goes wrong, Windows itself can roll back.
 **Cost:** small. **Note:** some PCs have System Restore turned off; the app will say so instead of failing.
 
-### 3. First-run welcome + honest expectations
+### 3. First-run welcome + honest expectations ✅
 **Why:** new users should know in 30 seconds what the app does, what it never does, and that everything is undoable.
 Also an honest note: *RAM cleaning is a short-term boost; the lasting win is fewer background apps.*
 **Cost:** small.
 
-### 4. Version number + "Check for updates"
+### 4. Version number + "Check for updates" ✅
 **Why:** you'll ship fixes; users need to know they exist.
 **What:** a version shown in the app, and a button that asks GitHub Releases if a newer version exists and opens the download page.
 No silent auto-updating at first, because that's a security-sensitive feature to get right.
 **Cost:** small. **Privacy:** it's the only network request the app makes, and it can be turned off.
 
-### 5. "Export diagnostics" for bug reports
+### 5. "Export diagnostics" for bug reports ✅
 **Why:** when a user reports "it didn't work", you need facts: Windows version, what was detected, what failed.
 **What:** one button that saves a text/zip report, with **user name and PC name removed**, so users can attach it to a GitHub issue.
 **Cost:** small. **Biggest payoff** for handling feedback.
@@ -47,17 +47,17 @@ services/registry are often **falsely flagged by antivirus**. A signature proves
 or Azure Trusted Signing (about $10/month). Plus submitting each release to Microsoft as a false positive if flagged.
 **Cost:** paperwork/money. **Risk if skipped:** many users won't trust or even be able to run it.
 
-### 7. Automatic builds + releases on GitHub (CI)
+### 7. Automatic builds + releases on GitHub (CI) ✅
 **Why:** every release is built the same clean way on GitHub's servers, not on your PC, and gets published
 with a checksum (SHA-256) so users can verify the download.
 **Cost:** small, one-time setup.
 
-### 8. Crash safety
+### 8. Crash safety ✅
 **Why:** if something unexpected happens on a stranger's PC, the app should show a friendly message,
 write the details to a log, and offer "copy error for a bug report" instead of a scary .NET error box.
 **Cost:** small.
 
-### 9. Project docs
+### 9. Project docs ✅
 README with screenshots, FAQ ("Is a RAM cleaner snake oil?" answered honestly), SECURITY.md (how to report
 security issues privately), CONTRIBUTING.md, and issue templates that ask for the diagnostics export.
 
