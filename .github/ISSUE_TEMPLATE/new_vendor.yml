@@ -1,0 +1,51 @@
+name: Support a new app or vendor
+description: Ask for (or help add) a background app from your PC maker or another vendor, e.g. ASUS Armoury Crate, MSI Center, Lenovo Vantage.
+title: "[Catalog] "
+labels: ["catalog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Featherweight's list of optimizations is a simple JSON file ([guide](../blob/main/docs/CATALOG.md)).
+        The details below are usually all that's needed to add support. You don't need to know how to code.
+
+  - type: input
+    id: vendor
+    attributes:
+      label: App / vendor
+      placeholder: "ASUS Armoury Crate"
+    validations:
+      required: true
+
+  - type: input
+    id: pc-model
+    attributes:
+      label: PC maker and model
+      placeholder: "ASUS ROG Strix G16 (2024)"
+
+  - type: textarea
+    id: processes
+    attributes:
+      label: Background processes you see
+      description: |
+        In Featherweight's Dashboard → Top processes (or Task Manager → Details), which processes belong to this app,
+        and roughly how much memory do they use?
+      placeholder: |
+        ArmouryCrate.Service.exe   ~60 MB
+        ArmouryCrateSE.Service.exe ~40 MB
+    validations:
+      required: true
+
+  - type: textarea
+    id: services
+    attributes:
+      label: Windows services (optional)
+      description: Press Win+R → `services.msc` and list the related services (Name and Startup type).
+
+  - type: textarea
+    id: features
+    attributes:
+      label: What does the app do that people might still want?
+      description: E.g. fan control, RGB, battery charge limits. This decides whether turning it off is Recommended or Optional.
+    validations:
+      required: true

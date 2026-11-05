@@ -1,0 +1,194 @@
+{
+  "name": "Featherweight optimization catalog",
+  "version": 2,
+  "optimizations": [
+    {
+      "id": "dell-supportassist", "category": "Dell & Alienware", "title": "Dell SupportAssist", "level": "optional",
+      "description": "Dell's support app: hardware scans, driver offers and an always-on local web service that Dell's website talks to. Switch it back on (Restore default) before running Dell diagnostics or contacting Dell support.",
+      "estimateMB": 230, "risk": "Low",
+      "processes": ["SupportAssistAgent", "DellSupportAssistRemedationService", "Dell.TechHub.Diagnostics.SubAgent"],
+      "detect": { "service": "SupportAssistAgent" },
+      "checks": [
+        { "probe": "firmwareViaWindowsUpdate", "is": true, "verdict": "optional", "note": "{text}, so BIOS updates don't depend on SupportAssist." },
+        { "probe": "firmwareViaWindowsUpdate", "is": false, "verdict": "optional", "note": "{text}. SupportAssist may be how this PC gets BIOS and driver updates; keep it unless you update from Dell's website yourself." }
+      ],
+      "actions": [
+        { "type": "service", "name": "SupportAssistAgent", "start": "Manual", "stop": true },
+        { "type": "service", "name": "Dell SupportAssist Remediation", "start": "Manual", "stop": true },
+        { "type": "dell-agent", "exe": "Dell.TechHub.Diagnostics.SubAgent.exe", "start": "Manual" }
+      ]
+    },
+    {
+      "id": "dell-update", "category": "Dell & Alienware", "title": "Dell Update", "level": "optional",
+      "description": "Dell's own driver and BIOS updater, running in the background.",
+      "estimateMB": 100, "risk": "Low",
+      "processes": ["ServiceShell", "Dell.Update.SubAgent"],
+      "detect": { "service": "DellClientManagementService" },
+      "checks": [
+        { "probe": "firmwareViaWindowsUpdate", "is": true, "verdict": "recommended", "note": "{text}, so Dell Update isn't needed for BIOS updates." },
+        { "probe": "firmwareViaWindowsUpdate", "is": false, "verdict": "avoid", "note": "{text}. Dell Update may be the only way this PC gets BIOS updates. Keep it, or update the BIOS from Dell's support website yourself." }
+      ],
+      "actions": [
+        { "type": "service", "name": "DellClientManagementService", "start": "Manual", "stop": true },
+        { "type": "dell-agent", "exe": "Dell.Update.SubAgent.exe", "start": "Manual" }
+      ]
+    },
+    {
+      "id": "dell-analytics", "category": "Dell & Alienware", "title": "Dell usage analytics", "level": "recommended",
+      "description": "Dell TechHub's analytics agent, which collects usage data for Dell. Nothing on your PC needs it.",
+      "estimateMB": 45, "risk": "Safe",
+      "processes": ["Dell.TechHub.Analytics.SubAgent"],
+      "detect": { "dell-agent": "Dell.TechHub.Analytics.SubAgent.exe" },
+      "actions": [
+        { "type": "dell-agent", "exe": "Dell.TechHub.Analytics.SubAgent.exe", "start": "Manual" }
+      ]
+    },
+    {
+      "id": "dell-data-collection", "category": "Dell & Alienware", "title": "Dell device data collection", "level": "optional",
+      "description": "Dell TechHub's data-manager and instrumentation agents, which gather device information. SupportAssist may use them for its scans, so keep them if you use SupportAssist.",
+      "estimateMB": 200, "risk": "Low",
+      "processes": ["Dell.TechHub.DataManager.SubAgent", "Dell.TechHub.Instrumentation.SubAgent", "Dell.TechHub.Instrumentation.UserProcess"],
+      "detect": { "dell-agent": ["Dell.TechHub.DataManager.SubAgent.exe", "Dell.TechHub.Instrumentation.SubAgent.exe"] },
+      "actions": [
+        { "type": "dell-agent", "exe": "Dell.TechHub.DataManager.SubAgent.exe", "start": "Manual" },
+        { "type": "dell-agent", "exe": "Dell.TechHub.Instrumentation.SubAgent.exe", "start": "Manual" }
+      ]
+    },
+    {
+      "id": "dell-digital-delivery", "category": "Dell & Alienware", "title": "Dell Digital Delivery", "level": "recommended",
+      "description": "Downloads software you bought together with the PC (for example Microsoft Office). If you haven't downloaded that software yet, do it first; afterwards nothing needs this service.",
+      "estimateMB": 105, "risk": "Safe",
+      "processes": ["Dell.D3.WinSvc"],
+      "detect": { "service": "Dell Digital Delivery Services" },
+      "actions": [
+        { "type": "service", "name": "Dell Digital Delivery Services", "start": "Manual", "stop": true }
+      ]
+    },
+    {
+      "id": "dell-fusion", "category": "Dell & Alienware", "title": "Dell Fusion service", "level": "advanced",
+      "description": "An older Dell client framework (FusionCore). It isn't part of Alienware Command Center, but which Dell apps rely on it varies by model. Test your Dell/Alienware apps after turning it off.",
+      "estimateMB": 50, "risk": "Moderate",
+      "processes": ["FusionService"],
+      "detect": { "service": "FusionService" },
+      "actions": [
+        { "type": "service", "name": "FusionService", "start": "Manual", "stop": true }
+      ]
+    },
+    {
+      "id": "alienfx", "category": "Dell & Alienware", "title": "Alienware lighting effects (AlienFX)", "level": "optional",
+      "description": "Runs Alienware Command Center's lighting effects for RGB keyboards and Alienware accessories. Turn it off only if you don't use custom lighting; the keyboard then falls back to its built-in lighting.",
+      "estimateMB": 100, "risk": "Low",
+      "processes": ["AlienFXSubAgent"],
+      "detect": { "dell-agent": "AlienFXSubAgent.exe" },
+      "actions": [
+        { "type": "dell-agent", "exe": "AlienFXSubAgent.exe", "start": "Manual" }
+      ]
+    },
+
+    {
+      "id": "nvidia-overlay", "category": "NVIDIA", "title": "NVIDIA in-game overlay", "level": "optional",
+      "description": "The Alt+Z overlay used for recording, instant replay, screenshots and the performance counter. Keep it if you use any of those. Driver updates keep working without it.",
+      "estimateMB": 330, "risk": "Safe",
+      "processes": ["NVIDIA Overlay", "NVIDIA Share", "nvsphelper64"],
+      "detect": { "file": ["%ProgramFiles%\\NVIDIA Corporation\\NVIDIA App\\CEF\\NVIDIA Overlay.exe", "%ProgramFiles%\\NVIDIA Corporation\\NVIDIA GeForce Experience\\NVIDIA Share.exe"] },
+      "manual": "This is a setting inside NVIDIA's own app, so Featherweight can't switch it for you.\n\nNVIDIA App: Settings → Features → NVIDIA Overlay → Off (On to restore).\nGeForce Experience: Settings → General → In-game overlay → Off (On to restore)."
+    },
+
+    {
+      "id": "intel-graphics-tray", "category": "Intel", "title": "Intel Graphics Software at startup", "level": "recommended",
+      "description": "Starts Intel's graphics control-panel app with Windows. The graphics driver itself is unaffected, and you can still open the app from the Start menu whenever you need it.",
+      "estimateMB": 105, "risk": "Safe",
+      "processes": ["IntelGraphicsSoftware"],
+      "detect": { "package": "AppUp.IntelArcSoftware" },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\SystemAppData\\AppUp.IntelArcSoftware_8j3eq9eme6ctt\\IntelGraphicsSoftwareStartup", "name": "State", "kind": "DWord", "value": 1 }
+      ]
+    },
+
+    {
+      "id": "phone-link", "category": "Windows", "title": "Phone Link in the background", "level": "recommended",
+      "description": "Lets Phone Link run in the background to show your phone's notifications, messages and calls on the PC.",
+      "estimateMB": 85, "risk": "Safe",
+      "processes": ["PhoneExperienceHost"],
+      "detect": { "package": "Microsoft.YourPhone" },
+      "checks": [
+        { "probe": "phonePaired", "is": true, "verdict": "avoid", "note": "{text}. Turning this off stops its notifications, messages and calls from reaching the PC." },
+        { "probe": "phonePaired", "is": false, "verdict": "recommended", "note": "{text}, so nothing is using it." }
+      ],
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications\\Microsoft.YourPhone_8wekyb3d8bbwe", "name": "Disabled", "kind": "DWord", "value": 1 },
+        { "type": "registry", "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications\\Microsoft.YourPhone_8wekyb3d8bbwe", "name": "DisabledByUser", "kind": "DWord", "value": 1 },
+        { "type": "registry", "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications\\MicrosoftWindows.CrossDevice_cw5n1h2txyewy", "name": "Disabled", "kind": "DWord", "value": 1 },
+        { "type": "registry", "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications\\MicrosoftWindows.CrossDevice_cw5n1h2txyewy", "name": "DisabledByUser", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "pc-manager", "category": "Windows", "title": "Microsoft PC Manager", "level": "optional",
+      "description": "Microsoft's clean-up and \"boost\" app, running its service in the background. Keep it if you use PC Manager yourself.",
+      "estimateMB": 25, "risk": "Safe",
+      "processes": ["MSPCManagerService", "MSPCManager"],
+      "detect": { "service": "PCManager Service Store" },
+      "actions": [
+        { "type": "service", "name": "PCManager Service Store", "start": "Manual", "stop": true },
+        { "type": "registry", "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications\\Microsoft.MicrosoftPCManager_8wekyb3d8bbwe", "name": "Disabled", "kind": "DWord", "value": 1 },
+        { "type": "registry", "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications\\Microsoft.MicrosoftPCManager_8wekyb3d8bbwe", "name": "DisabledByUser", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "hyperv-vmms", "category": "Windows", "title": "Hyper-V virtual machine manager", "level": "optional",
+      "description": "Manages Hyper-V virtual machines and Hyper-V Manager. WSL, Windows Sandbox and Docker's WSL mode use a different service and keep working. If you start using Hyper-V Manager later, choose Restore default first.",
+      "estimateMB": 42, "risk": "Low",
+      "processes": ["vmms"],
+      "detect": { "service": "vmms" },
+      "checks": [
+        { "probe": "hypervVms", "is": true, "verdict": "avoid", "note": "{text} on this PC. Turning this off would stop them from starting." },
+        { "probe": "hypervVms", "is": false, "verdict": "recommended", "note": "{text}." }
+      ],
+      "actions": [
+        { "type": "service", "name": "vmms", "start": "Manual", "stop": true }
+      ]
+    },
+    {
+      "id": "cross-device-resume", "category": "Windows", "title": "Resume apps from your phone", "level": "optional",
+      "description": "Windows' \"continue on this PC what you were doing on your phone\" feature. Some Windows versions still start its helper, so the memory gain can be small.",
+      "estimateMB": 50, "risk": "Safe",
+      "processes": ["CrossDeviceResume"],
+      "detect": { "file": "%SystemRoot%\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\CrossDeviceResume.exe" },
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CrossDeviceResume\\Configuration", "name": "IsResumeAllowed", "kind": "DWord", "value": 0 }
+      ]
+    },
+    {
+      "id": "start-web-search", "category": "Windows", "title": "Web results in Start search", "level": "optional",
+      "description": "Bing web results when you search from the Start menu. With this off, Start search shows only things on your PC. It's mostly about clutter and privacy; the memory effect is small.",
+      "estimateMB": 0, "risk": "Safe",
+      "processes": [],
+      "actions": [
+        { "type": "registry", "path": "HKCU:\\Software\\Policies\\Microsoft\\Windows\\Explorer", "name": "DisableSearchBoxSuggestions", "kind": "DWord", "value": 1 }
+      ]
+    },
+
+    {
+      "id": "nahimic", "category": "Audio & games", "title": "Nahimic audio effects", "level": "optional",
+      "description": "The Nahimic \"sound enhancer\" (virtual surround, voice and bass effects) that ships with some audio drivers. Sound keeps working without it; keep it if you like its effects.",
+      "estimateMB": 45, "risk": "Safe",
+      "processes": ["NahimicService", "NahimicSvc64", "NahimicSvc32", "awscns"],
+      "detect": { "service": "NahimicService" },
+      "actions": [
+        { "type": "service", "name": "NahimicService", "start": "Manual", "stop": true },
+        { "type": "task", "path": "\\", "name": "NahimicSvc32Run" },
+        { "type": "task", "path": "\\", "name": "NahimicSvc64Run" }
+      ]
+    },
+    {
+      "id": "punkbuster", "category": "Audio & games", "title": "PunkBuster anti-cheat service", "level": "recommended",
+      "description": "An old anti-cheat service installed by some older games. It runs with full system rights all the time; games that need it start it themselves.",
+      "estimateMB": 2, "risk": "Safe",
+      "processes": ["PnkBstrA", "PnkBstrB"],
+      "detect": { "service": "PnkBstrA" },
+      "actions": [
+        { "type": "service", "name": "PnkBstrA", "start": "Manual", "stop": true }
+      ]
+    }
+  ]
+}

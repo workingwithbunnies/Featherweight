@@ -1,0 +1,23 @@
+# Build output
+artifacts/
+obj/
+bin/
+*.pdb
+*.exe
+
+# Never commit a user's data (portable mode writes these next to the exe)
+backups/
+snapshots/
+logs/
+optimizer-state.json
+custom-optimizations.json
+portable
+portable.txt
+
+# Editors / OS
+.vs/
+.vscode/
+*.user
+*.suo
+Thumbs.db
+desktop.ini

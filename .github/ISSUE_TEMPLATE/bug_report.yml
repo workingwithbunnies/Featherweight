@@ -1,0 +1,93 @@
+name: Bug report
+description: Something didn't work, showed the wrong thing, or crashed.
+title: "[Bug] "
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this! The more detail you give, the faster it can be fixed.
+        **Please don't include personal information** (your name, email, PC name) in screenshots or text.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem. What did you click, and what went wrong?
+      placeholder: "I clicked Optimize on 'Dell SupportAssist' and got an error saying…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: If you can, list the steps so someone else can make it happen too.
+      placeholder: |
+        1. Open Featherweight as administrator
+        2. Go to Optimize
+        3. …
+
+  - type: input
+    id: app-version
+    attributes:
+      label: Featherweight version
+      description: Shown at the bottom-left of the window (e.g. 0.1.0).
+    validations:
+      required: true
+
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+      description: Press Win+R, type `winver`, press Enter. E.g. "Windows 11 24H2 (build 26100)".
+    validations:
+      required: true
+
+  - type: input
+    id: pc-model
+    attributes:
+      label: PC maker and model (optional)
+      description: Helps with vendor-specific issues, e.g. "Dell G15 5511", "ASUS ROG Strix G16".
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Dashboard
+        - Clean RAM
+        - Optimize
+        - Backups / Undo
+        - Snapshots
+        - Security check
+        - Starting the app / crash
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Activity log or error text (optional)
+      description: |
+        On the Optimize page, click **Show activity** and copy the lines here.
+        The full log is in `%LocalAppData%\Featherweight\logs\activity.log`.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this hasn't been reported yet.
+          required: true
+        - label: I removed personal information from what I'm posting.
+          required: true

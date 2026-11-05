@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest an idea or improvement.
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like Featherweight to do?
+      description: Describe the problem you're trying to solve, not only the solution.
+      placeholder: "When I start a game I'd like to…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why would it help?
+      description: Who benefits, and how often would you use it?
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Anything you've tried instead? (optional)
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked the [roadmap](../blob/main/docs/ROADMAP.md) and existing issues.
+          required: true

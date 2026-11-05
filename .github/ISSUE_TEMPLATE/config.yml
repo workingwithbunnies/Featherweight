@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and help
+    url: https://github.com/OWNER/Featherweight/discussions
+    about: Not sure if it's a bug? Ask in Discussions first.
+  - name: Report a security problem privately
+    url: https://github.com/OWNER/Featherweight/security/advisories/new
+    about: Please don't post security issues publicly. See SECURITY.md.
