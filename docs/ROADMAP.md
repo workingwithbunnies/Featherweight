@@ -67,7 +67,7 @@ security issues privately), CONTRIBUTING.md, and issue templates that ask for th
 
 | Idea | Why users would like it | Cost |
 |---|---|---|
-| **Startup apps manager** | Every PC has apps starting with Windows; toggle them with live memory use. Works on any brand. | Medium |
+| **Startup apps manager** | Partly done: Optimize now lists startup apps, services, startup tasks and Store apps from any brand ("Not reviewed"). Still to do: a dedicated view with startup impact and sorting. | Small–medium |
 | **More vendors in the catalog** | ASUS Armoury Crate, MSI Center, Lenovo Vantage, HP Omen, Acer, Razer, Logitech G Hub, Corsair iCUE, game launchers at startup, OneDrive, Teams, Copilot, Xbox Game Bar, Edge startup boost… | Ongoing; community can add these as JSON without coding |
 | **Dark mode** | Most gamers expect it. | Small–medium |
 | **Tray icon** | Live RAM % next to the clock; right-click → Free up RAM. | Medium |

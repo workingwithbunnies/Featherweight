@@ -32,6 +32,11 @@ namespace Featherweight
         public int RunningCount;
         public List<string> Details = new List<string>();
 
+        // Found on this PC by Discovery rather than written in the catalog (not reviewed by anyone yet).
+        public bool Discovered;
+        public string Kind;                                     // "Service", "Startup app", "Scheduled task", "Store app"
+        public List<string> ExePaths = new List<string>();      // programs whose memory counts for it (a path ending in \ = a whole folder)
+
         public bool IsManual { get { return Manual != null; } }
         public bool IsAdvanced { get { return Level == "advanced"; } }
     }
@@ -115,11 +120,21 @@ namespace Featherweight
         }
 
         // ---------------------------------------------------------------- status
+        /// <summary>The reviewed catalog plus everything else Discovery finds on this PC.</summary>
+        public static List<Optimization> LoadWithDiscovered(Action<string> warn = null)
+        {
+            var res = Load();
+            res.AddRange(Discovery.Find(res, warn));
+            return res;
+        }
+
         public static void Evaluate(List<Optimization> opts)
         {
             Probes.Reset(); // re-ask the per-PC questions on every scan
-            var mem = ProcScan.Processes().GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+            var procs = ProcScan.Processes();
+            var mem = procs.GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => Tuple.Create(g.Sum(p => p.PrivMB), g.Count()), StringComparer.OrdinalIgnoreCase);
+            var byPath = opts.Any(o => o.Discovered) ? procs.Select(p => new { p, path = ProcScan.PathOf(p) }).ToList() : null;
             var state = LoadState(); bool dirty = false;
 
             foreach (var o in opts)
@@ -130,12 +145,22 @@ namespace Featherweight
                     Tuple<double, int> m;
                     if (mem.TryGetValue(pn, out m)) { o.LiveMB += m.Item1; o.RunningCount += m.Item2; }
                 }
+                // Found items: match by program path. Without admin rights Windows hides the path of services running as
+                // SYSTEM, so fall back to the program's name for those.
+                if (o.Discovered)
+                    foreach (var x in byPath.Where(x => o.ExePaths.Any(e => e != null && (x.path == null
+                             ? !e.EndsWith("\\") && string.Equals(x.p.Name, Path.GetFileNameWithoutExtension(e), StringComparison.OrdinalIgnoreCase)
+                             : e.EndsWith("\\") ? x.path.StartsWith(e, StringComparison.OrdinalIgnoreCase) : string.Equals(x.path, e, StringComparison.OrdinalIgnoreCase)))))
+                    { o.LiveMB += x.p.PrivMB; o.RunningCount++; }
 
                 if (o.IsManual)
                 {
+                    // Featherweight can't switch these and doesn't know who did: "not running" isn't counted as optimized by us.
                     o.Present = Detected(o.Detect, mem);
                     o.State = o.RunningCount > 0 ? OptState.NotOptimized : OptState.Optimized;
                     o.Details.Add("Manual setting — " + (o.RunningCount > 0 ? "currently running: " : "not running: ") + string.Join(", ", o.Processes));
+                    if (o.Present) Judge(o);
+                    continue;
                 }
                 else
                 {
@@ -146,7 +171,7 @@ namespace Featherweight
                         if (s == ItemState.Applied) applied++; else if (s == ItemState.NotFound) missing++; else notApplied++;
                         o.Details.Add((s == ItemState.Applied ? "[✓] " : s == ItemState.NotFound ? "[–] " : "[ ] ") + a.Describe() + "   (" + det + ")");
                     }
-                    o.Present = o.Detect != null ? Detected(o.Detect, mem) : missing < o.Actions.Count;
+                    o.Present = o.Discovered ? missing < o.Actions.Count : o.Detect != null ? Detected(o.Detect, mem) : missing < o.Actions.Count;
                     o.State = notApplied == 0 ? OptState.Optimized : applied == 0 ? OptState.NotOptimized : OptState.Partial;
                 }
 
@@ -155,7 +180,8 @@ namespace Featherweight
                 if (o.State == OptState.Optimized && chosen != "optimized" && o.Present) { state[o.Id] = "optimized"; dirty = true; }
                 if (o.State != OptState.Optimized && chosen == "optimized") o.State = OptState.ChangedBack;
 
-                if (o.Present) Judge(o);
+                if (o.Present && !o.Discovered) Judge(o);
+                if (o.Discovered) { o.Verdict = Verdict.Optional; o.VerdictNote = null; }
             }
             if (dirty) SaveState(state);
         }

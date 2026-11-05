@@ -37,10 +37,11 @@ Results depend entirely on what's installed on your PC.
 <img src="docs/images/optimize.png" alt="The Optimize page: background apps grouped by vendor with suggestions for this PC" width="820">
 
 ### 🎯 Optimize: suggestions made for *your* PC
-- Finds background apps and services from PC makers and Windows that are **actually installed** on your PC (Dell & Alienware, NVIDIA, Intel, Phone Link, and more over time).
+- Finds the background apps and services that are **actually on your PC**, from any brand: services that start with Windows, startup apps, startup tasks and Store apps running in the background, grouped by the company that made them.
 - Shows the **memory each one uses right now**.
-- Every item gets a suggestion: **Recommended**, **Optional**, or **Not advised here**, with an *"On this PC"* explanation. For example, it won't suggest turning off the Hyper-V service if you have virtual machines, or Dell Update if that's how your PC gets BIOS updates.
-- **Apply recommended** in one click, or pick items yourself.
+- Items Featherweight has **reviewed** (Dell & Alienware, NVIDIA, Intel, Phone Link and more over time) get a suggestion: **Recommended**, **Optional**, or **Not advised here**, with an *"On this PC"* explanation. For example, it won't suggest turning off the Hyper-V service if you have virtual machines, or Dell Update if that's how your PC gets BIOS updates.
+- Everything else it finds is listed as **Not reviewed**: you can still switch it off (backed up, undoable), after an extra warning.
+- **Apply recommended** in one click (reviewed items only), or pick items yourself.
 - Warns you if a Windows or app update **switches something back on**.
 
 ### ↩️ Everything is backed up and undoable
@@ -105,9 +106,9 @@ Nothing else is left behind: no services, no startup entries.
 <details>
 <summary><b>Do I need a Dell or a gaming laptop?</b></summary>
 
-No. The dashboard, RAM cleaner, snapshots and security check work on any Windows 10/11 PC. The Optimize page
-shows only what's installed on your PC; right now it knows most about Dell/Alienware, NVIDIA, Intel and Windows
-itself. Support for more brands (ASUS, MSI, Lenovo, HP, Razer…) is coming, and you can
+No. Everything works on any Windows 10/11 PC. The Optimize page lists background software from any brand that's
+on your PC. Detailed, reviewed advice currently covers Dell/Alienware, NVIDIA, Intel and Windows itself; other brands
+(ASUS, MSI, Lenovo, HP, Razer…) show as *Not reviewed* until they're added, and you can
 [ask for your PC's apps](../../issues/new/choose).
 </details>
 

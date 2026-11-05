@@ -28,6 +28,17 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 - Friendly error dialog and `crash.log` instead of raw .NET errors; details are copied for bug reports.
 - Automatic builds on GitHub for every push, and draft releases with a SHA-256 checksum for version tags.
 - Code of conduct.
+- Optimize finds background software from **any brand**, not only the apps in the catalog: services that start
+  with Windows, startup apps, scheduled tasks that run at startup or sign-in, and Store apps running in the background
+  or at sign-in. They're grouped by the company that made them and marked *Not reviewed*; switching one off needs
+  an extra confirmation, is backed up, and Restore default puts it back. Windows parts, Microsoft's own services and
+  Store apps, antivirus/firewall software and updaters are never offered.
+- Dashboard groups memory by the company that made each program (HP, AMD, Lenovo, Realtek…), so other brands
+  no longer end up in "Everything else".
+
+### Fixed
+- Items that are a setting in another app (such as the NVIDIA overlay) show *Running* / *Not running* and are no
+  longer counted as "optimized" or as memory saved, since Featherweight didn't switch them.
 
 ### Removed
 - "Resume from phone" no longer writes a device-management (MDM) policy key; it only uses the per-user setting.

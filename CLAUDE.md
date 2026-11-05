@@ -23,6 +23,7 @@ improvements proactively. Be fully transparent about limitations and anything un
 | `App.cs` | `Paths` (data in `%LocalAppData%\Featherweight`, or next to the exe if a `portable` file exists), `Admin` (elevation, signed-in user SID), `Snapshots`, `Program.Main` |
 | `PlanEngine.cs` | `Engine`: apply/check/restore actions (service, registry, task, cert), backups (`backup-*.json`), `RestoreItem` |
 | `Catalog.cs` | Loads catalog (+ user `custom-optimizations.json`), detection, per-PC verdicts, Optimize / Restore default |
+| `Discovery.cs` | Finds non-catalog background software on any PC (services, startup apps, startup tasks, Store apps) as "Not reviewed" items; `Publisher` = brand from signature / file details |
 | `Probes.cs` | Per-PC questions used by catalog `checks` (Hyper-V VMs, firmware via Windows Update, phone paired) |
 | `OptimizePage.cs`, `Pages.cs`, `Welcome.cs` | UI pages; `MainForm.cs` = sidebar, banners, update check |
 | `Settings.cs` | `settings.json` and System Restore point creation |

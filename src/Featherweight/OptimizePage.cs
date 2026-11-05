@@ -72,7 +72,7 @@ namespace Featherweight
             Controls.Add(log);
             Controls.Add(summary);
             Controls.Add(Ui.HeaderWith("Optimize",
-                "Background apps and services found on this PC, with a suggestion for each based on how this PC is set up. Every change is backed up first, and Restore default puts it back.", right));
+                "Background apps and services found on this PC. Reviewed items come with a suggestion based on how this PC is set up; everything else from other companies is listed below them. Every change is backed up first, and Restore default puts it back.", right));
         }
 
         public override void OnShow() { if (!busy) { var _ = Rescan(); } }
@@ -82,9 +82,10 @@ namespace Featherweight
         {
             busy = true; SetEnabled(false); summary.Text = "Scanning this PC…"; summary.ForeColor = Theme.Muted;
             var keep = Selected().Select(o => o.Id).ToList();
-            List<Optimization> loaded = null; string error = null;
-            await Task.Run(() => { try { loaded = Catalog.Load(); Catalog.Evaluate(loaded); } catch (Exception ex) { error = ex.Message; } });
+            List<Optimization> loaded = null; string error = null; var warnings = new List<string>();
+            await Task.Run(() => { try { loaded = Catalog.LoadWithDiscovered(w => { lock (warnings) warnings.Add(w); }); Catalog.Evaluate(loaded); } catch (Exception ex) { error = ex.Message; } });
             busy = false; SetEnabled(true);
+            foreach (var w in warnings) Log("NOTE   " + w);
             if (error != null) { summary.Text = "Could not read " + Path.GetFileName(Catalog.FilePath) + ": " + error; summary.ForeColor = Theme.Bad; return; }
             opts = loaded.Where(o => o.Present).ToList();
             Fill(keep);
@@ -97,17 +98,26 @@ namespace Featherweight
         {
             var shown = Visible_();
             list.BeginUpdate(); list.Items.Clear(); list.Groups.Clear();
-            foreach (var cat in shown.Select(o => o.Category).Distinct())
+            // Reviewed catalog groups first (catalog order), then each company's other background items, biggest first.
+            var reviewedCats = shown.Where(o => !o.Discovered).Select(o => o.Category).Distinct();
+            var foundCats = shown.Where(o => o.Discovered).GroupBy(o => o.Category).OrderByDescending(g => g.Sum(o => o.LiveMB)).ThenBy(g => g.Key).Select(g => g.Key);
+            var groups = reviewedCats.Select(c => Tuple.Create(c, false)).Concat(foundCats.Select(c => Tuple.Create(c, true)));
+            foreach (var grp in groups)
             {
-                var items = shown.Where(o => o.Category == cat).ToList();
-                var g = new ListViewGroup(cat + "    " + items.Count(o => o.State == OptState.Optimized) + " of " + items.Count + " optimized");
+                string cat = grp.Item1; bool found = grp.Item2;
+                var items = shown.Where(o => o.Category == cat && o.Discovered == found).OrderByDescending(o => found ? o.LiveMB : 0).ToList();
+                int counted = items.Count(o => !o.IsManual);
+                var g = new ListViewGroup(found
+                    ? cat + "    other background items found on this PC (not reviewed yet)"
+                    : cat + "    " + items.Count(o => !o.IsManual && o.State == OptState.Optimized) + " of " + counted + " optimized" +
+                      (counted < items.Count ? " · " + (items.Count - counted) + " set in another app" : ""));
                 list.Groups.Add(g);
                 foreach (var o in items)
                 {
-                    var it = new ListViewItem(new[] { o.Title, VerdictText(o), StateText(o.State), MemoryText(o) }, g)
+                    var it = new ListViewItem(new[] { o.Discovered ? o.Title + "  (" + o.Kind.ToLowerInvariant() + ")" : o.Title, VerdictText(o), StateText(o), MemoryText(o) }, g)
                     { Tag = o, UseItemStyleForSubItems = false, ToolTipText = o.VerdictNote ?? o.Description };
-                    it.SubItems[1].ForeColor = VerdictColor(o.Verdict);
-                    it.SubItems[2].ForeColor = StateColor(o.State); it.SubItems[2].Font = Theme.Bold;
+                    it.SubItems[1].ForeColor = o.Discovered ? Theme.Muted : VerdictColor(o.Verdict);
+                    it.SubItems[2].ForeColor = StateColor(o); it.SubItems[2].Font = Theme.Bold;
                     it.SubItems[3].ForeColor = o.RunningCount > 0 && o.State != OptState.Optimized ? Theme.Text : Theme.Muted;
                     list.Items.Add(it);
                     if (keep.Contains(o.Id)) it.Selected = true;
@@ -117,14 +127,19 @@ namespace Featherweight
             if (list.SelectedItems.Count == 0 && list.Items.Count > 0) list.Items[0].Selected = true;
             ShowDetails();
 
-            var rec = shown.Where(o => o.Verdict == Verdict.Recommended).ToList();
+            // Counts only cover what Featherweight itself switches; items set in another app aren't claimed as savings.
+            var reviewed = shown.Where(o => !o.Discovered && !o.IsManual).ToList();
+            var foundItems = shown.Where(o => o.Discovered).ToList();
+            var rec = reviewed.Where(o => o.Verdict == Verdict.Recommended).ToList();
             int recDone = rec.Count(o => o.State == OptState.Optimized), recTodo = rec.Count - recDone;
-            int done = shown.Count(o => o.State == OptState.Optimized), changed = shown.Count(o => o.State == OptState.ChangedBack);
-            double saving = shown.Where(o => o.State == OptState.Optimized).Sum(o => o.EstimateMB);
+            int done = reviewed.Count(o => o.State == OptState.Optimized), changed = shown.Count(o => o.State == OptState.ChangedBack);
+            int foundOn = foundItems.Count(o => o.State != OptState.Optimized), foundDone = foundItems.Count - foundOn;
+            double saving = reviewed.Where(o => o.State == OptState.Optimized).Sum(o => o.EstimateMB);
             double recWorth = rec.Where(o => o.State != OptState.Optimized).Sum(o => o.RunningCount > 0 ? o.LiveMB : o.EstimateMB);
-            if (shown.Count == 0) summary.Text = "None of the background apps Featherweight knows about were found on this PC.";
+            if (shown.Count == 0) summary.Text = "No background apps or services from other companies were found on this PC.";
             else summary.Text = (recTodo == 0 ? "All recommended items are applied" : recTodo + " recommended item(s) left, worth about " + Theme.MB(recWorth)) +
-                                "  ·  " + done + " of " + shown.Count + " optimized in total" + (saving >= 1 ? ", saving about " + Theme.MB(saving) : "") +
+                                "  ·  " + done + " of " + reviewed.Count + " reviewed items optimized" + (saving >= 1 ? ", saving about " + Theme.MB(saving) : "") +
+                                (foundItems.Count > 0 ? "  ·  " + foundOn + " more found, not reviewed" + (foundDone > 0 ? " (" + foundDone + " optimized)" : "") : "") +
                                 (changed > 0 ? "  ·  " + changed + " changed back by an update or app" : "");
             summary.ForeColor = changed > 0 ? Theme.Bad : recTodo > 0 ? Theme.Warn : Theme.Ok;
             optimizeAll.Enabled = !busy && recTodo > 0;
@@ -132,6 +147,7 @@ namespace Featherweight
 
         static string VerdictText(Optimization o)
         {
+            if (o.Discovered) return "Not reviewed";
             if (o.IsAdvanced) return "Advanced";
             switch (o.Verdict) { case Verdict.Recommended: return "Recommended"; case Verdict.Avoid: return "Not advised here"; default: return "Optional"; }
         }
@@ -139,6 +155,18 @@ namespace Featherweight
         static Color VerdictColor(Verdict v)
         {
             switch (v) { case Verdict.Recommended: return Theme.Info; case Verdict.Avoid: return Theme.Bad; default: return Theme.Muted; }
+        }
+
+        static string StateText(Optimization o)
+        {
+            if (o.IsManual) return o.RunningCount > 0 ? "Running" : "Not running"; // set in another app: Featherweight can only see it
+            return StateText(o.State);
+        }
+
+        static Color StateColor(Optimization o)
+        {
+            if (o.IsManual) return o.RunningCount > 0 ? Theme.Warn : Theme.Muted;
+            return StateColor(o.State);
         }
 
         static string StateText(OptState s)
@@ -161,7 +189,7 @@ namespace Featherweight
         {
             if (o.RunningCount > 0) return "uses " + Theme.MB(o.LiveMB);
             if (o.EstimateMB < 1) return "—";
-            return (o.State == OptState.Optimized ? "saves ~" : "~") + Theme.MB(o.EstimateMB);
+            return (o.State == OptState.Optimized && !o.IsManual ? "saves ~" : "~") + Theme.MB(o.EstimateMB);
         }
 
         List<Optimization> Selected() { return list.SelectedItems.Cast<ListViewItem>().Select(i => (Optimization)i.Tag).ToList(); }
@@ -189,10 +217,10 @@ namespace Featherweight
                 return;
             }
             var x = sel[0];
-            dCategory.Text = x.Category.ToUpper();
+            dCategory.Text = (x.Discovered ? x.Category + "  ·  " + x.Kind : x.Category).ToUpper();
             dTitle.Text = x.Title;
-            dStatus.Text = StateText(x.State) + (x.State == OptState.ChangedBack ? " — an update or app switched this back on" : "");
-            dStatus.ForeColor = StateColor(x.State);
+            dStatus.Text = StateText(x) + (x.State == OptState.ChangedBack ? " — an update or app switched this back on" : "");
+            dStatus.ForeColor = StateColor(x);
             dDesc.Text = x.Description;
             dVerdict.Text = "Suggested: " + VerdictText(x);
             dVerdict.ForeColor = VerdictColor(x.Verdict);
@@ -200,7 +228,8 @@ namespace Featherweight
             dMemory.Text = x.RunningCount > 0
                 ? "Memory: using " + Theme.MB(x.LiveMB) + " right now (" + x.RunningCount + (x.RunningCount == 1 ? " process)" : " processes)")
                 : x.EstimateMB >= 1 ? "Memory: about " + Theme.MB(x.EstimateMB) + " when it runs" : "Memory: negligible";
-            dRisk.Text = "Risk: " + x.Risk + (x.IsManual ? "  ·  a setting in another app" : "  ·  backed up, undo any time");
+            dRisk.Text = x.Discovered ? "Risk: unknown, not reviewed yet  ·  backed up, undo any time"
+                                      : "Risk: " + x.Risk + (x.IsManual ? "  ·  a setting in another app" : "  ·  backed up, undo any time");
             dChanges.Text = (x.IsManual ? x.Manual.Replace("\n", "\r\n") + "\r\n\r\n" : "") + string.Join("\r\n", x.Details);
             if (x.IsManual) { optimize.Text = "How to turn it off"; restore.Text = "How to turn it back on"; }
             optimize.Enabled = !busy && x.State != OptState.Optimized;
@@ -237,6 +266,13 @@ namespace Featherweight
                 if (risky.Count > 0 && MessageBox.Show(FindForm(),
                         "Featherweight doesn't advise this on this PC:\n\n" + string.Join("\n\n", risky.Select(o => "• " + o.Title + "\n   " + o.VerdictNote)) +
                         "\n\nOptimize anyway?", "Not advised on this PC", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+                // Items found on this PC but not reviewed: say plainly that nobody has checked them (Cancel is the default).
+                var unreviewed = auto.Where(o => o.Discovered).ToList();
+                if (unreviewed.Count > 0 && MessageBox.Show(FindForm(),
+                        "Featherweight found these on this PC, but nobody has reviewed them yet:\n\n• " + string.Join("\n• ", unreviewed.Select(o => o.Title + " (" + o.Category + ", " + o.Kind.ToLowerInvariant() + ")")) +
+                        "\n\nThey're usually safe to switch off, but some hardware features (hotkeys, fans, lighting, audio effects, sync) can depend on them. " +
+                        "If something stops working, select it and choose Restore default.\n\nContinue?",
+                        "Not reviewed yet", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
                 if (MessageBox.Show(FindForm(), "Optimize " + auto.Count + " item(s)?\n\n• " + string.Join("\n• ", auto.Select(o => o.Title)) +
                         "\n\nCurrent settings are backed up first, and Restore default puts them back.",
                         "Optimize", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
