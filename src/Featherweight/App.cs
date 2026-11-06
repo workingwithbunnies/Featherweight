@@ -80,12 +80,18 @@ namespace Featherweight
         {
             if (string.IsNullOrWhiteSpace(label)) label = DateTime.Now.ToString("yyyyMMdd-HHmmss");
             foreach (var c in Path.GetInvalidFileNameChars()) label = label.Replace(c, '_');
+            // Never overwrite an earlier snapshot that has the same name.
+            string baseLabel = label;
+            for (int n = 2; File.Exists(Path.Combine(Paths.Snapshots, label + ".json")); n++) label = baseLabel + " (" + n + ")";
             var s = SysMem.Read();
             var procs = ProcScan.Processes();
             var groups = ProcScan.Group(procs).Select(g => (object)new Dictionary<string, object> {
                 { "Group", g.Group }, { "Count", g.Count }, { "PrivMB", Math.Round(g.PrivMB) }, { "WSMB", Math.Round(g.WSMB) }, { "Names", g.Names } }).ToList();
             var top = procs.OrderByDescending(p => p.PrivMB).Take(40).Select(p => (object)new Dictionary<string, object> {
                 { "Name", p.Name }, { "Id", p.Id }, { "PrivMB", Math.Round(p.PrivMB) }, { "WSMB", Math.Round(p.WSMB) } }).ToList();
+            // Every program (all its processes added up), so a comparison can show exactly which programs grew or shrank.
+            var programs = procs.GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase).Select(g => (object)new Dictionary<string, object> {
+                { "Name", g.Key }, { "Count", g.Count() }, { "PrivMB", Math.Round(g.Sum(p => p.PrivMB), 1) } }).ToList();
             var doc = new Dictionary<string, object>
             {
                 { "Label", label }, { "Time", DateTime.Now.ToString("s") }, { "UptimeMin", Math.Round(SysMem.UptimeMin) },
@@ -93,7 +99,7 @@ namespace Featherweight
                     { "TotalMB", Math.Round(s.TotalMB) }, { "AvailableMB", Math.Round(s.AvailMB) }, { "UsedMB", Math.Round(s.UsedMB) },
                     { "CommitMB", Math.Round(s.CommitMB) }, { "CommitLimitMB", Math.Round(s.CommitLimitMB) },
                     { "NonpagedMB", Math.Round(s.NonpagedMB) }, { "PagedMB", Math.Round(s.PagedMB) }, { "Processes", s.Processes } } },
-                { "Groups", groups }, { "Top", top }
+                { "Groups", groups }, { "Top", top }, { "Programs", programs }
             };
             string path = Path.Combine(Paths.Snapshots, label + ".json");
             Json.WriteFile(path, doc);

@@ -64,6 +64,13 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
   Link” → off, right now: allowed") instead of registry paths, and every item, including the built-in Windows ones,
   shows the same "On this PC" facts. Store apps are named the way Windows shows them.
 - The details text no longer gets highlighted after Optimize or Restore default.
+- Snapshots: taking one now compares it with the previous one straight away (newest as "After", the one before as
+  "Before"; the lists used to keep the same position, so both could show the same snapshot). A plain summary says
+  what changed and which program grew or shrank most, a new "By program" section lists every program that changed
+  by 5 MB or more (started / closed included), companies with nothing running are hidden, a Swap button was added,
+  and snapshots with the same name no longer overwrite each other.
+- Optimize: hover text is short (the full details stay in the side panel), and info-only items no longer show
+  "Running" in orange.
 - Task descriptions no longer show the Windows account ID, and odd characters in program details are cleaned up.
 - When a restore point can't be made, the activity log now says why (System Protection off, or the actual error)
   instead of an empty message.

@@ -117,7 +117,7 @@ namespace Featherweight
                 foreach (var o in items)
                 {
                     var it = new ListViewItem(new[] { o.Discovered ? o.Title + "  (" + o.Kind.ToLowerInvariant() + ")" : o.Title, VerdictText(o), StateText(o), MemoryText(o) }, g)
-                    { Tag = o, UseItemStyleForSubItems = false, ToolTipText = o.VerdictNote ?? o.Description };
+                    { Tag = o, UseItemStyleForSubItems = false, ToolTipText = Tip(o) };
                     it.SubItems[1].ForeColor = o.ViewOnly || (o.Discovered && o.Knowledge == null) ? Theme.Muted : VerdictColor(o.Verdict);
                     it.SubItems[2].ForeColor = StateColor(o); it.SubItems[2].Font = Theme.Bold;
                     it.SubItems[3].ForeColor = o.RunningCount > 0 && o.State != OptState.Optimized ? Theme.Text : Theme.Muted;
@@ -159,6 +159,14 @@ namespace Featherweight
             switch (o.Verdict) { case Verdict.Recommended: return "Recommended"; case Verdict.Avoid: return "Not advised here"; default: return "Optional"; }
         }
 
+        /// <summary>Short hover text (the full details are in the panel on the right).</summary>
+        static string Tip(Optimization o)
+        {
+            string t = o.VerdictNote ?? (o.Discovered ? o.Summary : null) ?? o.Description ?? "";
+            int nl = t.IndexOf('\n'); if (nl > 0) t = t.Substring(0, nl).Trim();
+            return t.Length > 220 ? t.Substring(0, 220).TrimEnd() + "…" : t;
+        }
+
         static Color VerdictColor(Verdict v)
         {
             switch (v) { case Verdict.Recommended: return Theme.Info; case Verdict.Avoid: return Theme.Bad; default: return Theme.Muted; }
@@ -173,7 +181,8 @@ namespace Featherweight
 
         static Color StateColor(Optimization o)
         {
-            if (o.IsManual || o.ViewOnly) return o.RunningCount > 0 ? Theme.Warn : Theme.Muted;
+            if (o.ViewOnly) return Theme.Muted; // information only: nothing to act on
+            if (o.IsManual) return o.RunningCount > 0 ? Theme.Warn : Theme.Muted;
             if (o.Knowledge != null && o.Knowledge.Suggest == "keep" && o.State == OptState.NotOptimized) return Theme.Muted;
             return StateColor(o.State);
         }
