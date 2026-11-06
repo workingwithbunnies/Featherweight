@@ -53,6 +53,12 @@ namespace Featherweight
         {
             if (!Settings.RestorePoints) { log("NOTE   System Restore point skipped (turned off in Settings)."); return; }
             const string fallback = " Featherweight's own backup still protects every change.";
+            if (ProtectionOff)
+            {
+                log("NOTE   System Protection is turned off on this PC, so Windows can't make restore points. " +
+                    "You can turn it on from Settings & about." + fallback);
+                return;
+            }
             try
             {
                 DateTime? latest = Latest();
@@ -75,8 +81,36 @@ namespace Featherweight
                     else log("NOTE   Windows didn't create a restore point (code " + rv + ")." + fallback);
                 }
             }
-            catch (Exception ex) { log("NOTE   Couldn't create a System Restore point (" + ex.Message.Trim() + ")." + fallback); }
+            catch (Exception ex)
+            {
+                string why = ex.Message.Trim();
+                if (why.Length == 0) why = ex.GetType().Name + " 0x" + ex.HResult.ToString("X8"); // some WMI errors have no text
+                log("NOTE   Couldn't create a System Restore point (" + why + ")." + fallback);
+            }
         }
+
+        /// <summary>
+        /// True when System Protection is off for every drive. Windows keeps RPSessionInterval at 1 while it's on for at
+        /// least one drive and sets it to 0 when it's off (a number, so it reads the same in every display language).
+        /// </summary>
+        public static bool ProtectionOff
+        {
+            get
+            {
+                try
+                {
+                    using (var k = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore"))
+                    {
+                        object v = k == null ? null : k.GetValue("RPSessionInterval");
+                        return v != null && Convert.ToInt32(v) == 0;
+                    }
+                }
+                catch { return false; }
+            }
+        }
+
+        /// <summary>Opens Windows' own System Protection tab (where restore points are switched on per drive).</summary>
+        public static void OpenSettings() { try { System.Diagnostics.Process.Start("SystemPropertiesProtection.exe"); } catch { } }
 
         static DateTime? Latest()
         {

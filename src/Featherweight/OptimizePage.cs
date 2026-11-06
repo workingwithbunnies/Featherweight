@@ -129,7 +129,7 @@ namespace Featherweight
 
             // Counts only cover what Featherweight itself switches; items set in another app aren't claimed as savings.
             var reviewed = shown.Where(o => !o.Discovered && !o.IsManual).ToList();
-            var foundItems = shown.Where(o => o.Discovered).ToList();
+            var foundItems = shown.Where(o => o.Discovered && !o.ViewOnly).ToList();
             var rec = reviewed.Where(o => o.Verdict == Verdict.Recommended).ToList();
             int recDone = rec.Count(o => o.State == OptState.Optimized), recTodo = rec.Count - recDone;
             int done = reviewed.Count(o => o.State == OptState.Optimized), changed = shown.Count(o => o.State == OptState.ChangedBack);
@@ -141,12 +141,15 @@ namespace Featherweight
                                 "  ·  " + done + " of " + reviewed.Count + " reviewed items optimized" + (saving >= 1 ? ", saving about " + Theme.MB(saving) : "") +
                                 (foundItems.Count > 0 ? "  ·  " + foundOn + " more found, not reviewed" + (foundDone > 0 ? " (" + foundDone + " optimized)" : "") : "") +
                                 (changed > 0 ? "  ·  " + changed + " changed back by an update or app" : "");
+            int hiddenDrivers = opts.Count(o => o.ViewOnly && !shown.Contains(o));
+            if (hiddenDrivers > 0) summary.Text += "  ·  " + hiddenDrivers + " driver helpers listed for information (tick Show advanced)";
             summary.ForeColor = changed > 0 ? Theme.Bad : recTodo > 0 ? Theme.Warn : Theme.Ok;
             optimizeAll.Enabled = !busy && recTodo > 0;
         }
 
         static string VerdictText(Optimization o)
         {
+            if (o.ViewOnly) return "Info only";
             if (o.Discovered) return "Not reviewed";
             if (o.IsAdvanced) return "Advanced";
             switch (o.Verdict) { case Verdict.Recommended: return "Recommended"; case Verdict.Avoid: return "Not advised here"; default: return "Optional"; }
@@ -159,13 +162,13 @@ namespace Featherweight
 
         static string StateText(Optimization o)
         {
-            if (o.IsManual) return o.RunningCount > 0 ? "Running" : "Not running"; // set in another app: Featherweight can only see it
+            if (o.IsManual || o.ViewOnly) return o.RunningCount > 0 ? "Running" : "Not running"; // Featherweight can only see these
             return StateText(o.State);
         }
 
         static Color StateColor(Optimization o)
         {
-            if (o.IsManual) return o.RunningCount > 0 ? Theme.Warn : Theme.Muted;
+            if (o.IsManual || o.ViewOnly) return o.RunningCount > 0 ? Theme.Warn : Theme.Muted;
             return StateColor(o.State);
         }
 
@@ -212,8 +215,8 @@ namespace Featherweight
                 dMemory.Text = "Using right now: " + Theme.MB(sel.Sum(o => o.LiveMB));
                 dRisk.Text = "Optimize or restore them all at once.";
                 dChanges.Text = string.Join("\r\n\r\n", sel.Select(o => o.Title + "\r\n" + string.Join("\r\n", o.Details)));
-                optimize.Enabled = !busy && sel.Any(o => o.State != OptState.Optimized);
-                restore.Enabled = !busy && sel.Any(o => o.State != OptState.NotOptimized);
+                optimize.Enabled = !busy && sel.Any(o => !o.ViewOnly && o.State != OptState.Optimized);
+                restore.Enabled = !busy && sel.Any(o => !o.ViewOnly && o.State != OptState.NotOptimized);
                 return;
             }
             var x = sel[0];
@@ -228,12 +231,13 @@ namespace Featherweight
             dMemory.Text = x.RunningCount > 0
                 ? "Memory: using " + Theme.MB(x.LiveMB) + " right now (" + x.RunningCount + (x.RunningCount == 1 ? " process)" : " processes)")
                 : x.EstimateMB >= 1 ? "Memory: about " + Theme.MB(x.EstimateMB) + " when it runs" : "Memory: negligible";
-            dRisk.Text = x.Discovered ? "Risk: unknown, not reviewed yet  ·  backed up, undo any time"
+            dRisk.Text = x.ViewOnly ? "Listed for information only: Featherweight doesn't change driver helpers it hasn't reviewed"
+                       : x.Discovered ? "Risk: unknown, not reviewed yet  ·  backed up, undo any time"
                                       : "Risk: " + x.Risk + (x.IsManual ? "  ·  a setting in another app" : "  ·  backed up, undo any time");
             dChanges.Text = (x.IsManual ? x.Manual.Replace("\n", "\r\n") + "\r\n\r\n" : "") + string.Join("\r\n", x.Details);
             if (x.IsManual) { optimize.Text = "How to turn it off"; restore.Text = "How to turn it back on"; }
-            optimize.Enabled = !busy && x.State != OptState.Optimized;
-            restore.Enabled = !busy && x.State != OptState.NotOptimized;
+            optimize.Enabled = !busy && !x.ViewOnly && x.State != OptState.Optimized;
+            restore.Enabled = !busy && !x.ViewOnly && x.State != OptState.NotOptimized;
         }
 
         void SetEnabled(bool on)
@@ -254,7 +258,7 @@ namespace Featherweight
         // ---------------------------------------------------------------- actions
         async Task DoOptimize(List<Optimization> targets)
         {
-            targets = targets.Where(o => o.State != OptState.Optimized).ToList();
+            targets = targets.Where(o => !o.ViewOnly && o.State != OptState.Optimized).ToList();
             if (targets.Count == 0) return;
             var auto = targets.Where(o => !o.IsManual).ToList();
             var manual = targets.Where(o => o.IsManual).ToList();
@@ -290,7 +294,7 @@ namespace Featherweight
 
         async Task DoRestore(List<Optimization> targets)
         {
-            targets = targets.Where(o => o.State != OptState.NotOptimized).ToList();
+            targets = targets.Where(o => !o.ViewOnly && o.State != OptState.NotOptimized).ToList();
             if (targets.Count == 0) return;
             var auto = targets.Where(o => !o.IsManual).ToList();
             var manual = targets.Where(o => o.IsManual).ToList();

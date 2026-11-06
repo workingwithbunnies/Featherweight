@@ -35,6 +35,7 @@ namespace Featherweight
         // Found on this PC by Discovery rather than written in the catalog (not reviewed by anyone yet).
         public bool Discovered;
         public string Kind;                                     // "Service", "Startup app", "Scheduled task", "Store app"
+        public bool ViewOnly;                                   // listed for information only (driver helpers): never changed
         public List<string> ExePaths = new List<string>();      // programs whose memory counts for it (a path ending in \ = a whole folder)
 
         public bool IsManual { get { return Manual != null; } }
@@ -170,6 +171,14 @@ namespace Featherweight
                         string det; var s = Engine.Check(a, out det);
                         if (s == ItemState.Applied) applied++; else if (s == ItemState.NotFound) missing++; else notApplied++;
                         o.Details.Add((s == ItemState.Applied ? "[✓] " : s == ItemState.NotFound ? "[–] " : "[ ] ") + a.Describe() + "   (" + det + ")");
+                    }
+                    if (o.ViewOnly)
+                    {
+                        // Nothing will be changed: show what it is and its current state instead of "would change" lines.
+                        o.Details.Clear();
+                        foreach (var p in o.ExePaths) o.Details.Add("Program: " + p);
+                        foreach (var a in o.Actions) { string det; Engine.Check(a, out det); o.Details.Add("Current state: " + det.Replace("now: ", "")); }
+                        o.Details.Add("Featherweight won't change this until it has been reviewed.");
                     }
                     o.Present = o.Discovered ? missing < o.Actions.Count : o.Detect != null ? Detected(o.Detect, mem) : missing < o.Actions.Count;
                     o.State = notApplied == 0 ? OptState.Optimized : applied == 0 ? OptState.NotOptimized : OptState.Partial;

@@ -50,7 +50,8 @@ namespace Featherweight
             sb.AppendLine("Version: " + MainForm.AppVersion + (Paths.Portable ? " (portable)" : ""));
             sb.AppendLine("Running as administrator: " + Admin.IsAdmin + (Admin.DifferentUser ? " (elevated with a different account than the signed-in user)" : ""));
             sb.AppendLine("Data folder: " + Paths.Root);
-            sb.AppendLine("Settings: update check " + (Settings.CheckUpdates ? "on" : "off") + ", restore points " + (Settings.RestorePoints ? "on" : "off"));
+            sb.AppendLine("Settings: update check " + (Settings.CheckUpdates ? "on" : "off") + ", restore points " + (Settings.RestorePoints ? "on" : "off") +
+                          ", Windows System Protection " + (RestorePoint.ProtectionOff ? "OFF" : "on"));
 
             h("Windows");
             Safe(sb, () =>

@@ -39,12 +39,21 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 - Export diagnostics also lists what Optimize found, every service from other companies, and memory by company,
   so a report from a new brand of PC has everything needed to add reviewed entries for it.
 
+- Optimize also lists helpers that hardware drivers install (AMD, Intel, Realtek, HP…) under *Show advanced*, with their
+  memory use. They're for information only: Featherweight won't change one until it has a reviewed entry.
+- Settings & about says when Windows' System Protection is off (so no restore points can be made) and opens its settings.
+
 ### Changed
 - New welcome screen: a header with the logo, and three cards (what it does, what it never does, good to know).
+- Dashboard only lists companies that have something running (no more grey 0 MB rows), and programs that drivers put
+  in the Windows folder are grouped under their maker instead of "Windows & Microsoft".
+- Store apps are grouped by their publisher, and per-user task names no longer show the account's ID.
 
 ### Fixed
 - The "Restart as administrator" (and update) banner buttons no longer have their text cut off.
 - The security check no longer warns about Featherweight itself being unsigned; it says so as information instead.
+- When a restore point can't be made, the activity log now says why (System Protection off, or the actual error)
+  instead of an empty message.
 - Items that are a setting in another app (such as the NVIDIA overlay) show *Running* / *Not running* and are no
   longer counted as "optimized" or as memory saved, since Featherweight didn't switch them.
 

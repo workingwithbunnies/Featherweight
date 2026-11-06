@@ -168,9 +168,11 @@ namespace Featherweight
             {
                 string path = PathOf(p) ?? GuessPath(p);
                 string brand = path == null ? null : Publisher.Of(path, false);
-                if (brand == null || brand == Publisher.Unknown) { rest.Add(p); continue; }
-                if (Publisher.IsMicrosoft(brand) || path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows) + "\\", StringComparison.OrdinalIgnoreCase))
-                    brand = WindowsGroup;
+                bool inWindows = path != null && path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows) + "\\", StringComparison.OrdinalIgnoreCase);
+                // Drivers install their helpers inside the Windows folder too (AMD, Realtek, HP…): only Microsoft's own
+                // programs, or ones that name no company at all there, count as Windows.
+                if (brand == null || brand == Publisher.Unknown) { if (inWindows) brand = WindowsGroup; else { rest.Add(p); continue; } }
+                else if (Publisher.IsMicrosoft(brand)) brand = WindowsGroup;
                 // join a fixed group of the same brand ("Dell" → "Dell/Alienware")
                 int i = sets.FindIndex(s => s.Key.Equals(brand, StringComparison.OrdinalIgnoreCase) || s.Key.StartsWith(brand + "/", StringComparison.OrdinalIgnoreCase));
                 if (i < 0) { sets.Add(new KeyValuePair<string, List<ProcInfo>>(brand, new List<ProcInfo>())); i = sets.Count - 1; }

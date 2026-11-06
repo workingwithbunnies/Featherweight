@@ -96,7 +96,7 @@ namespace Featherweight
             cards.Add(new InfoCard("What it does", Blue, Glyph("", "»"), cw, new[] {
                 "Shows live memory use, grouped by app and by the company that made it.",
                 "Finds the background apps on this PC, from any brand, and suggests what's safe to switch off.",
-                "Backs up every setting before changing it, and makes a System Restore point too." }));
+                "Backs up every setting before changing it, plus a System Restore point when Windows has those turned on." }));
             cards.Add(new InfoCard("What it never does", Green, Glyph("", "✓"), cw, new[] {
                 "Change anything without showing you first and asking for permission.",
                 "Turn off Windows Update, Microsoft Defender or other security features.",
@@ -270,6 +270,17 @@ namespace Featherweight
             stack.Controls.Add(Note("The update check is Featherweight's only internet connection. It asks GitHub for the latest version number and never downloads anything by itself."));
             stack.Controls.Add(restore);
             stack.Controls.Add(Note("Windows keeps at most one restore point per day, so a recent one is reused. Featherweight's own backups protect every change either way."));
+            if (RestorePoint.ProtectionOff)
+            {
+                var off = Theme.Label("System Protection is turned off on this PC, so Windows can't make restore points. Turning it on uses a little disk space " +
+                                      "(you choose how much) and lets you roll Windows back to an earlier point.", Theme.Small, Theme.Warn);
+                off.MaximumSize = new Size(760, 0); off.Margin = new Padding(20, 0, 0, 4);
+                stack.Controls.Add(off);
+                var openRow = Theme.ButtonRow(); openRow.Dock = DockStyle.None; openRow.Margin = new Padding(20, 0, 0, 8);
+                var open = Theme.Button("Open System Protection settings"); open.Click += (s, e) => RestorePoint.OpenSettings();
+                openRow.Controls.Add(open);
+                stack.Controls.Add(openRow);
+            }
 
             stack.Controls.Add(Section("Your data"));
             stack.Controls.Add(Theme.Label(Paths.Display));

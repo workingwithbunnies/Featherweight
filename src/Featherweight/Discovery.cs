@@ -26,17 +26,21 @@ namespace Featherweight
             new[] { "ASUSTeK", "ASUS" }, new[] { "Micro-Star", "MSI" }, new[] { "Lenovo", "Lenovo" }, new[] { "Dell", "Dell" },
             new[] { "Alienware", "Dell" }, new[] { "Acer", "Acer" }, new[] { "Samsung", "Samsung" }, new[] { "Razer", "Razer" },
             new[] { "Logitech", "Logitech" }, new[] { "Corsair", "Corsair" }, new[] { "Realtek", "Realtek" }, new[] { "Intel", "Intel" },
-            new[] { "NVIDIA", "NVIDIA" }, new[] { "Google", "Google" }, new[] { "Microsoft", "Microsoft" }, new[] { "Valve", "Valve" },
-            new[] { "Epic Games", "Epic Games" }, new[] { "Electronic Arts", "EA" }, new[] { "Ubisoft", "Ubisoft" }, new[] { "Adobe", "Adobe" }, new[] { "The Git Development Community", "Git" },
+            new[] { "NVIDIA", "NVIDIA" }, new[] { "Google", "Google" }, new[] { "Microsoft", "Microsoft" }, new[] { "Windows (R)", "Microsoft" },
+            new[] { "Valve", "Valve" }, new[] { "Epic Games", "Epic Games" }, new[] { "Electronic Arts", "EA" }, new[] { "Ubisoft", "Ubisoft" },
+            new[] { "Adobe", "Adobe" }, new[] { "The Git Development Community", "Git" }, new[] { "ELAN", "ELAN" }, new[] { "Synaptics", "Synaptics" },
         };
-        static readonly Regex Suffix = new Regex(@"[,\s]+(Inc\.?|Incorporated|Corporation|Corp\.?|Co\.?,?\s*Ltd\.?|Ltd\.?|Limited|LLC|L\.L\.C\.|GmbH|AG|S\.A\.|B\.V\.|Pte\.?|PBC|Company)$", RegexOptions.IgnoreCase);
+        static readonly Regex Suffix = new Regex(@"[,\s]+(Inc\.?|Incorporated|Corporation|Corp\.?|Co\.?,?\s*Ltd\.?|Ltd\.?|Limited|LLC|L\.L\.C\.|GmbH|AG|SE|S\.A\.|B\.V\.|Pte\.?|PBC|Oy|e\.K\.|Company)$", RegexOptions.IgnoreCase);
+        // Folder names that say nothing about who made a program ("C:\Program Files\Common Files\...").
+        static readonly string[] GenericFolders = { "Common Files", "Shared", "Tools", "Programs" };
 
-        /// <summary>Short brand name, e.g. "HP Inc." → "HP", "Advanced Micro Devices, Inc." → "AMD".</summary>
+        /// <summary>Short brand name, e.g. "HP Inc." → "HP", "Bitsum Technologies (Bitsum LLC)" → "Bitsum Technologies".</summary>
         public static string Normalize(string company)
         {
             if (string.IsNullOrWhiteSpace(company)) return null;
             string c = company.Trim().Trim('"').Trim();
             foreach (var a in Aliases) if (c.StartsWith(a[0], StringComparison.OrdinalIgnoreCase)) return a[1];
+            c = Regex.Replace(c, @"\s*\([^)]*\)\s*$", "").Trim(); // trailing "(...)"
             for (int i = 0; i < 3; i++) { string s = Suffix.Replace(c, "").Trim(); if (s == c) break; c = s; }
             return c.Length == 0 ? null : c;
         }
@@ -50,7 +54,10 @@ namespace Featherweight
             string key = (thorough ? "s|" : "f|") + path;
             lock (cache) { string hit; if (cache.TryGetValue(key, out hit)) return hit; }
             string res = null;
-            if (thorough)
+            // Store apps: the package says who published it (their programs' own details are often blank or odd).
+            string pkg = PackageRoot(path);
+            if (pkg != null) { string t; Manifest(pkg, out t, out res); }
+            if (res == null && thorough)
                 try
                 {
                     var c = X509Certificate.CreateFromSignedFile(path);
@@ -66,18 +73,59 @@ namespace Featherweight
             return res;
         }
 
-        /// <summary>"C:\Program Files\HP\…" → "HP" when the file itself names no company.</summary>
+        /// <summary>"C:\Program Files\HP\..." → "HP" when the file itself names no company (generic folders are skipped).</summary>
         static string FolderBrand(string path)
         {
             foreach (var root in new[] { Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                                          Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) })
             {
                 if (string.IsNullOrEmpty(root) || !path.StartsWith(root + "\\", StringComparison.OrdinalIgnoreCase)) continue;
-                string rest = path.Substring(root.Length + 1);
-                int i = rest.IndexOf('\\');
-                if (i > 0 && !rest.StartsWith("WindowsApps", StringComparison.OrdinalIgnoreCase)) return Normalize(rest.Substring(0, i));
+                var parts = path.Substring(root.Length + 1).Split('\\');
+                for (int i = 0; i < parts.Length - 1; i++)
+                {
+                    if (parts[i].Equals("WindowsApps", StringComparison.OrdinalIgnoreCase)) return null;
+                    if (GenericFolders.Contains(parts[i], StringComparer.OrdinalIgnoreCase)) continue;
+                    return Normalize(parts[i]);
+                }
             }
             return null;
+        }
+
+        /// <summary>"C:\Program Files\WindowsApps\Pkg_1.0_x64__id\app\x.exe" → "C:\Program Files\WindowsApps\Pkg_1.0_x64__id\".</summary>
+        public static string PackageRoot(string path)
+        {
+            int i = path.IndexOf("\\WindowsApps\\", StringComparison.OrdinalIgnoreCase);
+            if (i < 0) return null;
+            int start = i + "\\WindowsApps\\".Length, end = path.IndexOf('\\', start);
+            return end < 0 ? null : path.Substring(0, end + 1);
+        }
+
+        /// <summary>App and publisher names from a package's AppxManifest.xml (skipped when they're resource references).</summary>
+        public static void Manifest(string folder, out string title, out string brand)
+        {
+            title = brand = null;
+            if (folder == null) return;
+            string key = "m|" + folder;
+            lock (cache)
+            {
+                string hit;
+                if (cache.TryGetValue(key, out hit)) { var p = hit.Split('\n'); title = p[0].Length > 0 ? p[0] : null; brand = p[1].Length > 0 ? p[1] : null; return; }
+            }
+            try
+            {
+                string f = Path.Combine(folder, "AppxManifest.xml");
+                if (File.Exists(f))
+                {
+                    string xml = File.ReadAllText(f);
+                    var props = Regex.Match(xml, "<Properties>(.*?)</Properties>", RegexOptions.Singleline).Groups[1].Value;
+                    var dn = Regex.Match(props, "<DisplayName>([^<]+)</DisplayName>");
+                    var pn = Regex.Match(props, "<PublisherDisplayName>([^<]+)</PublisherDisplayName>");
+                    if (dn.Success && !dn.Groups[1].Value.StartsWith("ms-resource:")) title = System.Net.WebUtility.HtmlDecode(dn.Groups[1].Value.Trim());
+                    if (pn.Success && !pn.Groups[1].Value.StartsWith("ms-resource:")) brand = Normalize(System.Net.WebUtility.HtmlDecode(pn.Groups[1].Value));
+                }
+            }
+            catch { }
+            lock (cache) cache[key] = (title ?? "") + "\n" + (brand ?? "");
         }
 
         /// <summary>The program a command line runs: handles quotes, arguments, environment variables and script hosts.</summary>
@@ -161,7 +209,6 @@ namespace Featherweight
         static bool Protected(Ctx c, string exe)
         {
             if (string.IsNullOrEmpty(exe)) return true;
-            if (exe.StartsWith(c.WinDir, StringComparison.OrdinalIgnoreCase)) return true;           // part of Windows
             if (string.Equals(exe, c.Self, StringComparison.OrdinalIgnoreCase)) return true;
             if (Updater.IsMatch(Path.GetFileName(exe))) return true;
             string dir = (Path.GetDirectoryName(exe) ?? "") + "\\";
@@ -195,6 +242,28 @@ namespace Featherweight
                 Risk = "Not reviewed", Level = "optional", Present = true,
                 Actions = actions.Select(a => new PlanItem { D = a }).ToList()
             };
+        }
+
+        /// <summary>
+        /// Programs inside the Windows folder: Microsoft's (or ones naming no company) are never offered. Other companies'
+        /// are helpers installed with a hardware driver (AMD, Realtek, HP…): offered, but only under "Show advanced".
+        /// </summary>
+        static bool SkipWindowsPart(Ctx c, string exe, string brand, out bool driver)
+        {
+            driver = exe != null && exe.StartsWith(c.WinDir, StringComparison.OrdinalIgnoreCase);
+            return driver && (Publisher.IsMicrosoft(brand) || brand == Publisher.Unknown);
+        }
+
+        static void MarkDriver(Optimization o, string brand)
+        {
+            // Driver helpers can run thermals, audio, touchpad, display or security chips: shown so their memory use is
+            // visible, but only a reviewed catalog entry may change one.
+            o.Level = "advanced"; o.ViewOnly = true;
+            o.Kind = "Driver " + o.Kind.ToLowerInvariant();
+            string what = o.Kind == "Driver service" ? "a background service" : o.Kind == "Driver startup app" ? "a program that starts when you sign in" : "a task that runs at startup or sign-in";
+            o.Description = "Installed together with a hardware driver from " + brand + ": " + what + " (" + Path.GetFileName(o.ExePaths.FirstOrDefault() ?? "") + "). " +
+                "Helpers like this can control things such as cooling, audio, touchpad, display or security chips, so Featherweight only shows it here " +
+                "for information and won't change it until it has been reviewed.";
         }
 
         static bool Wanted(Ctx c, bool isOn, params Dictionary<string, object>[] actions)
@@ -232,7 +301,8 @@ namespace Featherweight
                     string exe = Publisher.ExeFromCommand(k.GetValue("ImagePath", "", RegistryValueOptions.None) as string);
                     if (Protected(c, exe) || !File.Exists(exe)) continue;
                     string brand = Publisher.Of(exe);
-                    if (Publisher.IsMicrosoft(brand)) continue;
+                    bool driver;
+                    if (Publisher.IsMicrosoft(brand) || SkipWindowsPart(c, exe, brand, out driver)) continue;
                     var act = new Dictionary<string, object> { { "type", "service" }, { "name", name }, { "start", "Manual" } };
                     if (!Wanted(c, start == 2, act)) continue;
                     string display = ServiceDisplayName(name, k);
@@ -241,6 +311,7 @@ namespace Featherweight
                         "Optimizing sets it to Manual: Windows then starts it only when an app asks for it, and it is fully running again after Restore default. " +
                         "Some features of " + brand + "'s software (for example hotkeys, fan, lighting or audio effects) may need it, so if something stops working, restore it.", act);
                     o.ExePaths.Add(exe);
+                    if (driver) MarkDriver(o, brand);
                     res.Add(o);
                 }
         }
@@ -311,6 +382,8 @@ namespace Featherweight
         static void Startup(Ctx c, List<Optimization> res, string hive, string approvedKey, string valueName, string title, string exe)
         {
             string brand = Publisher.Of(exe);
+            bool driver;
+            if (SkipWindowsPart(c, exe, brand, out driver)) return;
             string path = hive + ":\\" + Approved + approvedKey;
             var cur = Engine.RegState(path, valueName);
             var bytes = (bool)cur["Exists"] ? cur["Value"] as List<int> : null;
@@ -326,6 +399,7 @@ namespace Featherweight
                 "Optimizing switches it off in the same place as Task Manager's Startup apps tab. The app still works when you open it yourself; " +
                 "you only lose what it does on its own in the background (for example tray icons, sync or notifications).", act);
             o.ExePaths.Add(exe);
+            if (driver) MarkDriver(o, brand);
             res.Add(o);
         }
 
@@ -359,15 +433,21 @@ namespace Featherweight
                     foreach (dynamic a in t.Definition.Actions) if ((int)a.Type == 0) { exe = Publisher.ExeFromCommand("\"" + (string)a.Path + "\" " + (string)a.Arguments); break; }
                     if (Protected(c, exe)) continue;
                     string brand = Publisher.Of(exe);
-                    if (Publisher.IsMicrosoft(brand)) continue;
+                    bool driver;
+                    if (Publisher.IsMicrosoft(brand) || SkipWindowsPart(c, exe, brand, out driver)) continue;
                     string dir = fpath == "\\" ? "\\" : fpath + "\\";
                     var act = new Dictionary<string, object> { { "type", "task" }, { "path", dir }, { "name", name } };
                     if (!Wanted(c, (bool)t.Enabled, act)) continue;
-                    var o = Item("task:" + dir + name, "Scheduled task", name, brand,
+                    // Per-user tasks carry the account's SID in their name ("OmenOverlay-sid-S-1-5-21-…"): show a clean name.
+                    string shown = Regex.Replace(name, @"-sid-S-1-[\d-]+$", "", RegexOptions.IgnoreCase);
+                    string fdesc = FileDescription(exe);
+                    if (fdesc != null && fdesc.Length < 60) shown = fdesc;
+                    var o = Item("task:" + dir + name, "Scheduled task", shown, brand,
                         "A scheduled task from " + brand + " that runs when Windows starts or when you sign in (" + Path.GetFileName(exe) + "). " +
                         "Featherweight hasn't reviewed it yet. Optimizing disables the task; Restore default turns it back on. " +
                         "If a feature of " + brand + "'s software stops working, restore it.", act);
                     o.ExePaths.Add(exe);
+                    if (driver) MarkDriver(o, brand);
                     res.Add(o);
                 }
                 catch { }
@@ -445,7 +525,7 @@ namespace Featherweight
                 if (!Wanted(c, on, acts.ToArray())) continue;
 
                 string title, brand;
-                Manifest(folder, out title, out brand);
+                Publisher.Manifest(folder, out title, out brand);
                 if (brand == null)
                 {
                     string exe = folder != null && Directory.Exists(folder) ? Directory.GetFiles(folder, "*.exe", SearchOption.AllDirectories).FirstOrDefault() : null;
@@ -460,24 +540,6 @@ namespace Featherweight
                 if (folder != null) o.ExePaths.Add(folder); // a folder: every program inside the package counts
                 res.Add(o);
             }
-        }
-
-        /// <summary>App and publisher names from the package's AppxManifest.xml (skipped when they're resource references).</summary>
-        static void Manifest(string folder, out string title, out string brand)
-        {
-            title = brand = null;
-            try
-            {
-                string f = folder == null ? null : Path.Combine(folder, "AppxManifest.xml");
-                if (f == null || !File.Exists(f)) return;
-                string xml = File.ReadAllText(f);
-                var props = Regex.Match(xml, "<Properties>(.*?)</Properties>", RegexOptions.Singleline).Groups[1].Value;
-                var dn = Regex.Match(props, "<DisplayName>([^<]+)</DisplayName>");
-                var pn = Regex.Match(props, "<PublisherDisplayName>([^<]+)</PublisherDisplayName>");
-                if (dn.Success && !dn.Groups[1].Value.StartsWith("ms-resource:")) title = System.Net.WebUtility.HtmlDecode(dn.Groups[1].Value.Trim());
-                if (pn.Success && !pn.Groups[1].Value.StartsWith("ms-resource:")) brand = Publisher.Normalize(System.Net.WebUtility.HtmlDecode(pn.Groups[1].Value));
-            }
-            catch { }
         }
 
         /// <summary>"AD2F1837.OMENCommandCenter_1101.2405.7.0_x64__v10z8vjag6ke6" → "AD2F1837.OMENCommandCenter_v10z8vjag6ke6".</summary>

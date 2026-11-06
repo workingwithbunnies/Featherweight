@@ -107,12 +107,9 @@ namespace Featherweight
         {
             var procs = ProcScan.Processes();
             groups.BeginUpdate(); groups.Items.Clear();
-            foreach (var g in ProcScan.Group(procs).OrderByDescending(g => g.PrivMB))
-            {
-                var it = new ListViewItem(new[] { g.Group, g.Count.ToString(), Theme.MB(g.PrivMB), Theme.MB(g.WSMB) }) { ToolTipText = g.Names };
-                if (g.Count == 0) it.ForeColor = Theme.Muted;
-                groups.Items.Add(it);
-            }
+            // Only companies with something running: the fixed groups (Claude, Dell…) used to show as grey 0 MB rows on every PC.
+            foreach (var g in ProcScan.Group(procs).Where(g => g.Count > 0).OrderByDescending(g => g.PrivMB))
+                groups.Items.Add(new ListViewItem(new[] { g.Group, g.Count.ToString(), Theme.MB(g.PrivMB), Theme.MB(g.WSMB) }) { ToolTipText = g.Names });
             groups.EndUpdate(); Theme.FillColumn(groups);
             top.BeginUpdate(); top.Items.Clear();
             foreach (var p in procs.OrderByDescending(p => p.PrivMB).Take(30))
