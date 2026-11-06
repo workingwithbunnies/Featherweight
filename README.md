@@ -75,7 +75,7 @@ Featherweight changes Windows settings, so it's built around a few promises:
 | ✅ **Backs up first** | Original values are saved before anything is touched, plus a Windows System Restore point as a second safety net. |
 | ✅ **Always undoable** | Restore default, or undo a whole batch, any time. |
 | ✅ **Asks first** | Changing things needs administrator permission; viewing doesn't. |
-| ✅ **No telemetry** | No tracking, no analytics, no accounts. The only connection is an optional daily update check, which you choose on first start. |
+| ✅ **No telemetry** | No tracking, no analytics, no accounts. The only connection is an optional daily update check (new versions and item descriptions, from GitHub), which you choose on first start. |
 | ❌ **Never touches security** | It will never turn off Windows Update, Microsoft Defender or other security features. |
 | ❌ **No scare tactics** | No fake "PC health score", no registry cleaner, no driver updater. |
 
@@ -146,8 +146,9 @@ Windows. Viewing information doesn't need admin rights.
 <summary><b>Does it send any data anywhere?</b></summary>
 
 No. Featherweight has no telemetry. The only connection it makes is an optional update check: at most once a
-day it asks GitHub for the latest version number. You choose this on first start and can change it any time in
-**Settings & about**. Nothing about you or your PC is sent, and it never downloads anything by itself.
+day it asks GitHub for the latest version number and downloads the newest item descriptions (a small text file). You
+choose this on first start and can change it any time in **Settings & about**. Nothing about you or your PC is sent,
+and it never downloads or installs programs by itself.
 </details>
 
 ## Supported systems

@@ -41,6 +41,14 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 
 - Optimize also lists helpers that hardware drivers install (AMD, Intel, Realtek, HP…) under *Show advanced*, with their
   memory use. They're for information only: Featherweight won't change one until it has a reviewed entry.
+- Every item Optimize finds gets its own description, read from the PC without guessing: the maker's own description,
+  the product it belongs to, what starts it, which driver installed it, what a Store app is allowed to do, and what
+  it's doing right now (memory, processor time, open window, internet connections). Works offline.
+- Featherweight's own knowledge base (`knowledge.json`, see `docs/KNOWLEDGE.md`): reviewed descriptions saying what an
+  item is for, what you lose without it and when to keep it. First entries cover HP/OMEN software, DTS audio, Google
+  Play Games, Steam, the EA app, MSI Afterburner, Universal x86 Tuning Utility and Process Lasso. Newer descriptions
+  are downloaded from GitHub with the optional update check (nothing about the PC is sent; a downloaded file can only
+  describe items, never mark them Recommended).
 - Settings & about says when Windows' System Protection is off (so no restore points can be made) and opens its settings.
 
 ### Changed

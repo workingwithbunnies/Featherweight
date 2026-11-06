@@ -71,6 +71,8 @@ namespace Featherweight
             if (!Updates.AutomaticCheckDue) return;
             string error = null;
             var info = await System.Threading.Tasks.Task.Run(() => Updates.Check(out error));
+            // Same opt-in, same GitHub: also fetch newer item descriptions (one file; nothing about this PC is sent).
+            await System.Threading.Tasks.Task.Run(() => { string m; Knowledge.TryUpdate(out m); });
             Settings.LastUpdateCheck = DateTime.Now.ToString("s"); Settings.Save();
             if (info != null && Updates.IsNewer(info.Version, AppVersion) && info.Version != Settings.SkippedVersion)
                 content.Controls.Add(UpdateBanner(info)); // docks on top, above the admin banner

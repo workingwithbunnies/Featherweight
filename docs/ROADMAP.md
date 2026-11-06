@@ -83,7 +83,7 @@ security issues privately), CONTRIBUTING.md, and issue templates that ask for th
 
 Being upfront about this builds trust:
 
-- **No telemetry or tracking.** The only network request is the optional update check.
+- **No telemetry or tracking.** The only network request is the optional update check (which also fetches item descriptions).
 - **No fake "PC health score", registry cleaner, or driver updater.** Those are scareware patterns.
 - **No turning off Windows Update, Defender, or other security features.**
 - **No change without showing it first and backing it up.**

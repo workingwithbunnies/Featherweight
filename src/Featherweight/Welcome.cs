@@ -124,7 +124,7 @@ namespace Featherweight
             var foot = new DoubleBufferedPanel { Size = new Size(W, 96), Margin = Padding.Empty, BackColor = Theme.Card };
             foot.Paint += (s, e) => { using (var p = new Pen(Theme.Border)) e.Graphics.DrawLine(p, 0, 0, foot.Width, 0); };
             updates.Location = new Point(24, 18);
-            var note = Theme.Label("At most once a day it asks GitHub for the latest version number. That's Featherweight's only internet connection; " +
+            var note = Theme.Label("At most once a day it asks GitHub for the latest version number and the newest item descriptions. That's Featherweight's only internet connection; " +
                                    "nothing about you or your PC is sent. You can change this later in Settings & about.", Theme.Small, Theme.Muted);
             note.Location = new Point(42, 44); note.MaximumSize = new Size(560, 0); note.BackColor = Theme.Card;
             var start = Theme.Button("Get started  →", true);
@@ -246,6 +246,7 @@ namespace Featherweight
         readonly CheckBox restore = new CheckBox { Text = "Create a System Restore point before changing settings (recommended)", AutoSize = true, Margin = new Padding(0, 4, 0, 4) };
         readonly Label updateStatus = Theme.Label("", Theme.Base, Theme.Muted);
         readonly Button checkNow = Theme.Button("Check for updates now");
+        readonly Label descriptions = Theme.Label("", Theme.Small, Theme.Muted);
 
         public SettingsPage()
         {
@@ -260,6 +261,8 @@ namespace Featherweight
             row.Controls.Add(checkNow); row.Controls.Add(releases);
             stack.Controls.Add(row);
             stack.Controls.Add(updateStatus);
+            descriptions.Text = "Item descriptions: version " + Knowledge.Version + " (" + Knowledge.Origin + "), " + Knowledge.Entries.Count + " reviewed entries.";
+            stack.Controls.Add(descriptions);
 
             stack.Controls.Add(Section("Options"));
             updates.Checked = Settings.CheckUpdates;
@@ -267,7 +270,7 @@ namespace Featherweight
             updates.CheckedChanged += (s, e) => { Settings.CheckUpdates = updates.Checked; Settings.Save(); };
             restore.CheckedChanged += (s, e) => { Settings.RestorePoints = restore.Checked; Settings.Save(); };
             stack.Controls.Add(updates);
-            stack.Controls.Add(Note("The update check is Featherweight's only internet connection. It asks GitHub for the latest version number and never downloads anything by itself."));
+            stack.Controls.Add(Note("The update check is Featherweight's only internet connection. It asks GitHub for the latest version number and downloads the newest item descriptions (a small text file). Nothing about you or your PC is sent, and it never downloads or installs programs by itself."));
             stack.Controls.Add(restore);
             stack.Controls.Add(Note("Windows keeps at most one restore point per day, so a recent one is reused. Featherweight's own backups protect every change either way."));
             if (RestorePoint.ProtectionOff)
@@ -317,7 +320,10 @@ namespace Featherweight
             checkNow.Enabled = false; updateStatus.Text = "Checking…"; updateStatus.ForeColor = Theme.Muted;
             string error = null;
             var info = await Task.Run(() => Updates.Check(out error));
+            string kmsg = null;
+            await Task.Run(() => Knowledge.TryUpdate(out kmsg));
             checkNow.Enabled = true;
+            descriptions.Text = "Item descriptions: version " + Knowledge.Version + " (" + Knowledge.Origin + "), " + Knowledge.Entries.Count + " reviewed entries. Last check: " + kmsg + ".";
             Settings.LastUpdateCheck = DateTime.Now.ToString("s"); Settings.Save();
             if (info == null) { updateStatus.Text = error; return; }
             if (Updates.IsNewer(info.Version, MainForm.AppVersion))

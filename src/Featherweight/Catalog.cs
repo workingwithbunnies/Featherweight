@@ -36,6 +36,12 @@ namespace Featherweight
         public bool Discovered;
         public string Kind;                                     // "Service", "Startup app", "Scheduled task", "Store app"
         public bool ViewOnly;                                   // listed for information only (driver helpers): never changed
+        // What identifies it on any PC, for matching knowledge-base entries: "service", "task", "taskpath", "package",
+        // "startup", "exe" (file name), "publisher".
+        public Dictionary<string, string> Ids = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        public KnowledgeEntry Knowledge;                        // our reviewed entry for it, if there is one
+        public List<string> Facts = new List<string>();         // read from this PC (Facts.Describe)
+        public string Summary;                                  // short text for the top of the details panel (found items)
         public List<string> ExePaths = new List<string>();      // programs whose memory counts for it (a path ending in \ = a whole folder)
 
         public bool IsManual { get { return Manual != null; } }
@@ -121,6 +127,19 @@ namespace Featherweight
         }
 
         // ---------------------------------------------------------------- status
+        /// <summary>
+        /// A full scan as the Optimize page shows it: catalog + discovered items, their state on this PC, our knowledge-base
+        /// entries, and the facts read from this PC. Runs on a background thread.
+        /// </summary>
+        public static List<Optimization> ScanAll(Action<string> warn = null)
+        {
+            var all = LoadWithDiscovered(warn);
+            Evaluate(all);
+            try { global::Featherweight.Knowledge.Apply(all); } catch (Exception ex) { if (warn != null) warn("Knowledge base: " + ex.Message); }
+            try { global::Featherweight.Facts.Describe(all); } catch (Exception ex) { if (warn != null) warn("Reading facts: " + ex.Message); }
+            return all;
+        }
+
         /// <summary>The reviewed catalog plus everything else Discovery finds on this PC.</summary>
         public static List<Optimization> LoadWithDiscovered(Action<string> warn = null)
         {

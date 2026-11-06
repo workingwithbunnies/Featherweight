@@ -125,6 +125,56 @@ namespace Featherweight
         }
         static int Port(int raw) { return ((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF); } // network byte order
 
+        /// <summary>Number of open (established) TCP connections to other computers, per process id. Counts only: no addresses.</summary>
+        public static System.Collections.Generic.Dictionary<int, int> TcpConnectionsByPid()
+        {
+            var res = new System.Collections.Generic.Dictionary<int, int>();
+            foreach (int af in new[] { 2, 23 })
+            {
+                int size = 0;
+                GetExtendedTcpTable(IntPtr.Zero, ref size, false, af, 5 /*TCP_TABLE_OWNER_PID_ALL*/, 0);
+                if (size <= 0) continue;
+                IntPtr buf = Marshal.AllocHGlobal(size);
+                try
+                {
+                    if (GetExtendedTcpTable(buf, ref size, false, af, 5, 0) != 0) continue;
+                    int count = Marshal.ReadInt32(buf), rowSize = af == 2 ? 24 : 56;
+                    for (int i = 0; i < count; i++)
+                    {
+                        IntPtr row = IntPtr.Add(buf, 4 + i * rowSize);
+                        int state, pid; bool loopback;
+                        if (af == 2)
+                        {
+                            state = Marshal.ReadInt32(row, 0); pid = Marshal.ReadInt32(row, 20);
+                            loopback = (Marshal.ReadInt32(row, 12) & 0xFF) == 127;
+                        }
+                        else
+                        {
+                            var b = new byte[16]; Marshal.Copy(IntPtr.Add(row, 24), b, 0, 16);
+                            state = Marshal.ReadInt32(row, 48); pid = Marshal.ReadInt32(row, 52);
+                            loopback = System.Net.IPAddress.IsLoopback(new System.Net.IPAddress(b));
+                        }
+                        if (state != 5 /*ESTABLISHED*/ || loopback) continue;
+                        int n; res.TryGetValue(pid, out n); res[pid] = n + 1;
+                    }
+                }
+                finally { Marshal.FreeHGlobal(buf); }
+            }
+            return res;
+        }
+
+        // ---- "@file.dll,-123" and "@{Package?ms-resource://…}" strings, as Windows shows them in its own language ----
+        [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
+        static extern int SHLoadIndirectString(string source, StringBuilder outBuf, int outSize, IntPtr reserved);
+
+        public static string IndirectString(string source)
+        {
+            if (string.IsNullOrEmpty(source)) return null;
+            if (!source.StartsWith("@")) return source;
+            var sb = new StringBuilder(2048);
+            return SHLoadIndirectString(source, sb, sb.Capacity, IntPtr.Zero) == 0 && sb.Length > 0 ? sb.ToString() : null;
+        }
+
         // ---- privileges ----
         [StructLayout(LayoutKind.Sequential)] struct LUID { public uint Low; public int High; }
         [StructLayout(LayoutKind.Sequential)] struct TOKEN_PRIVILEGES { public uint Count; public LUID Luid; public uint Attributes; }

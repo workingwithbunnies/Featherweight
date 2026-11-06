@@ -90,8 +90,8 @@ namespace Featherweight
             h("Optimizations");
             Safe(sb, () =>
             {
-                var opts = Catalog.LoadWithDiscovered(w => sb.AppendLine("note: " + w));
-                Catalog.Evaluate(opts);
+                var opts = Catalog.ScanAll(w => sb.AppendLine("note: " + w));
+                sb.AppendLine("knowledge base: version " + Knowledge.Version + " (" + Knowledge.Origin + "), " + Knowledge.Entries.Count + " entries");
                 foreach (var p in new[] { "hypervVms", "firmwareViaWindowsUpdate", "phonePaired" })
                 {
                     var r = Probes.Get(p);
@@ -108,6 +108,8 @@ namespace Featherweight
                 {
                     sb.AppendLine("- [" + o.Category + "] " + o.Kind + ": " + o.Title + " — " + o.State + ", running " + o.RunningCount + " process(es) " + o.LiveMB.ToString("0") + " MB");
                     foreach (var p in o.ExePaths) sb.AppendLine("    program: " + p);
+                    sb.AppendLine("    ids: " + string.Join(", ", o.Ids.Select(kv => kv.Key + "=" + kv.Value)) + (o.Knowledge != null ? "  → reviewed entry " + o.Knowledge.Id : "  → no reviewed entry"));
+                    foreach (var f in o.Facts) sb.AppendLine("    fact: " + f);
                     foreach (var d in o.Details) sb.AppendLine("    " + d);
                 }
             });

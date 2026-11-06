@@ -202,6 +202,22 @@ namespace Featherweight
             var res = new List<Optimization>();
             foreach (var step in new Action<Ctx, List<Optimization>>[] { Services, RunKeys, StartupFolders, Tasks, Packages })
                 try { step(ctx, res); } catch (Exception ex) { if (warn != null) warn("Discovery step " + step.Method.Name + " failed: " + ex.Message); }
+            foreach (var o in res)
+            {
+                // Identifiers that are the same on every PC, for matching knowledge-base entries.
+                string id = o.Id.Substring("found:".Length), rest = id.Substring(id.IndexOf(':') + 1);
+                if (id.StartsWith("service:")) o.Ids["service"] = rest;
+                else if (id.StartsWith("app:")) o.Ids["package"] = rest;
+                else if (id.StartsWith("startup:")) o.Ids["startup"] = rest.Substring(rest.LastIndexOf(':') + 1);
+                else if (id.StartsWith("task:"))
+                {
+                    o.Ids["taskpath"] = rest;
+                    o.Ids["task"] = Regex.Replace(rest.Substring(rest.LastIndexOf('\\') + 1), @"-sid-S-1-[\d-]+$", "", RegexOptions.IgnoreCase);
+                }
+                o.Ids["publisher"] = o.Category;
+                string exe = o.ExePaths.FirstOrDefault(p => p != null && !p.EndsWith("\\"));
+                if (exe != null) o.Ids["exe"] = Path.GetFileName(exe);
+            }
             return res;
         }
 
