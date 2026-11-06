@@ -42,6 +42,7 @@ namespace Featherweight
         public KnowledgeEntry Knowledge;                        // our reviewed entry for it, if there is one
         public List<string> Facts = new List<string>();         // read from this PC (Facts.Describe)
         public string Summary;                                  // short text for the top of the details panel (found items)
+        public List<string> Changes = new List<string>();       // each change in plain words, with its current state (shown on screen)
         public List<string> ExePaths = new List<string>();      // programs whose memory counts for it (a path ending in \ = a whole folder)
 
         public bool IsManual { get { return Manual != null; } }
@@ -159,7 +160,7 @@ namespace Featherweight
 
             foreach (var o in opts)
             {
-                o.LiveMB = 0; o.RunningCount = 0; o.Details.Clear();
+                o.LiveMB = 0; o.RunningCount = 0; o.Details.Clear(); o.Changes.Clear();
                 foreach (var pn in o.Processes)
                 {
                     Tuple<double, int> m;
@@ -190,6 +191,7 @@ namespace Featherweight
                         string det; var s = Engine.Check(a, out det);
                         if (s == ItemState.Applied) applied++; else if (s == ItemState.NotFound) missing++; else notApplied++;
                         o.Details.Add((s == ItemState.Applied ? "[✓] " : s == ItemState.NotFound ? "[–] " : "[ ] ") + a.Describe() + "   (" + det + ")");
+                        var plain = global::Featherweight.Facts.PlainChange(a, s, det); if (plain != null) o.Changes.Add(plain);
                     }
                     if (o.ViewOnly)
                     {

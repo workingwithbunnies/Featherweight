@@ -143,6 +143,15 @@ Windows. Viewing information doesn't need admin rights.
 </details>
 
 <details>
+<summary><b>Snipping Tool (or another shortcut) doesn't work while Featherweight is open</b></summary>
+
+When Featherweight runs **as administrator** and its window is the active one, Windows doesn't let normal programs
+react to keys pressed in it. That's a Windows security rule, and it affects every program running as administrator
+(Task Manager too). Click another window or the desktop first, or close Featherweight when you've finished making
+changes. Featherweight opened normally (not as administrator) doesn't have this effect.
+</details>
+
+<details>
 <summary><b>Does it send any data anywhere?</b></summary>
 
 No. Featherweight has no telemetry. The only connection it makes is an optional update check: at most once a

@@ -24,7 +24,8 @@ namespace Featherweight
         readonly TextBox dChanges = new TextBox
         {
             Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, WordWrap = true, Dock = DockStyle.Fill,
-            Font = Theme.Base, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(250, 251, 253)
+            Font = Theme.Base, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(250, 251, 253),
+            TabStop = false // otherwise it gets the focus after a dialog closes, and Windows selects all its text
         };
         readonly Label changesLabel = Theme.Label("What it changes", Theme.Bold, Theme.Muted);
         readonly TextBox log = Theme.LogBox();
@@ -219,7 +220,8 @@ namespace Featherweight
                 dDesc.Text = string.Join(", ", sel.Select(o => o.Title));
                 dMemory.Text = "Using right now: " + Theme.MB(sel.Sum(o => o.LiveMB));
                 dRisk.Text = "Optimize or restore them all at once.";
-                dChanges.Text = string.Join("\r\n\r\n", sel.Select(o => o.Title + "\r\n" + string.Join("\r\n", o.Details)));
+                dChanges.Text = string.Join("\r\n\r\n", sel.Where(o => !o.ViewOnly).Select(o => o.Title + "\r\n" + string.Join("\r\n", o.IsManual ? o.Details : o.Changes)));
+                dChanges.Select(0, 0);
                 optimize.Enabled = !busy && sel.Any(o => !o.ViewOnly && o.State != OptState.Optimized);
                 restore.Enabled = !busy && sel.Any(o => !o.ViewOnly && o.State != OptState.NotOptimized);
                 return;
@@ -241,10 +243,16 @@ namespace Featherweight
                        : x.Discovered && x.Knowledge == null ? "Risk: unknown, not reviewed yet  ·  backed up, undo any time"
                        : x.Discovered ? "Reviewed (" + (x.Knowledge.Confidence ?? "see description") + ")  ·  backed up, undo any time"
                                       : "Risk: " + x.Risk + (x.IsManual ? "  ·  a setting in another app" : "  ·  backed up, undo any time");
-            changesLabel.Text = x.Discovered ? "About this item" : "What it changes";
-            dChanges.Text = x.Discovered && x.Summary != null
-                ? x.Description + "\r\n\r\nWhat it changes:\r\n" + string.Join("\r\n", x.Details)
-                : (x.IsManual ? x.Manual.Replace("\n", "\r\n") + "\r\n\r\n" : "") + string.Join("\r\n", x.Details);
+            // One plain-language box for every item: what it is on this PC, then what Optimize would change.
+            changesLabel.Text = "About this item";
+            string about = x.Discovered && x.Summary != null
+                ? x.Description
+                : (x.IsManual ? x.Manual.Replace("\n", "\r\n") + "\r\n\r\n" : "") +
+                  (x.Facts.Count > 0 ? "On this PC:\r\n" + string.Join("\r\n", x.Facts.Select(f => "•  " + f)) : "");
+            string changes = x.ViewOnly || x.IsManual || x.Changes.Count == 0 ? "" : "What it changes:\r\n" + string.Join("\r\n", x.Changes) +
+                (x.Changes.Any(c => c.StartsWith("✓")) ? "\r\n(✓ = already done)" : "");
+            dChanges.Text = (about + (about.Length > 0 && changes.Length > 0 ? "\r\n\r\n" : "") + changes).Trim();
+            dChanges.Select(0, 0);
             if (x.IsManual) { optimize.Text = "How to turn it off"; restore.Text = "How to turn it back on"; }
             optimize.Enabled = !busy && !x.ViewOnly && x.State != OptState.Optimized;
             restore.Enabled = !busy && !x.ViewOnly && x.State != OptState.NotOptimized;
@@ -253,7 +261,8 @@ namespace Featherweight
         void SetEnabled(bool on)
         {
             optimizeAll.Enabled = rescan.Enabled = list.Enabled = on;
-            if (!on) optimize.Enabled = restore.Enabled = false; else ShowDetails();
+            if (!on) optimize.Enabled = restore.Enabled = false;
+            else { ShowDetails(); if (list.CanFocus) list.Focus(); } // keep the focus on the list, not the details text
         }
 
         void ShowLog(bool show) { log.Visible = show; toggleLog.Text = show ? "Hide activity" : "Show activity"; }

@@ -547,7 +547,7 @@ namespace Featherweight
                     string exe = folder != null && Directory.Exists(folder) ? Directory.GetFiles(folder, "*.exe", SearchOption.AllDirectories).FirstOrDefault() : null;
                     brand = exe != null ? Publisher.Of(exe) : Publisher.Unknown;
                 }
-                if (title == null) title = PackageTitle(fam);
+                if (title == null) title = Facts.AppTitle(fam) ?? PackageTitle(fam);
                 var o = Item("app:" + fam, "Store app", title, brand,
                     title + " is a Store app from " + brand + " that can run in the background or start when you sign in. " +
                     "Featherweight hasn't reviewed it yet. Optimizing turns that off, the same switches as Settings → Apps → Installed apps → Advanced options and " +
@@ -556,6 +556,40 @@ namespace Featherweight
                 if (folder != null) o.ExePaths.Add(folder); // a folder: every program inside the package counts
                 res.Add(o);
             }
+        }
+
+        static Dictionary<string, string> packageFolders;
+
+        /// <summary>Install folder of a Store app (by family name) for the signed-in user, or null.</summary>
+        public static string PackageFolder(string family)
+        {
+            if (packageFolders == null)
+            {
+                var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                try
+                {
+                    using (var repo = Engine.OpenUserKey(PackageRepo))
+                        if (repo != null)
+                            foreach (var full in repo.GetSubKeyNames())
+                                using (var k = repo.OpenSubKey(full))
+                                {
+                                    string fam = FamilyOf(full), root = k == null ? null : k.GetValue("PackageRootFolder") as string;
+                                    if (fam != null && root != null && !map.ContainsKey(fam)) { map[fam] = root.TrimEnd('\\') + "\\"; fullNames[fam] = full; }
+                                }
+                }
+                catch { }
+                packageFolders = map;
+            }
+            string f; return packageFolders.TryGetValue(family, out f) ? f : null;
+        }
+
+        static readonly Dictionary<string, string> fullNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Full package name (with version), needed to read a Store app's own translated name.</summary>
+        public static string PackageFullName(string family)
+        {
+            PackageFolder(family);
+            string f; return fullNames.TryGetValue(family, out f) ? f : null;
         }
 
         /// <summary>"AD2F1837.OMENCommandCenter_1101.2405.7.0_x64__v10z8vjag6ke6" → "AD2F1837.OMENCommandCenter_v10z8vjag6ke6".</summary>

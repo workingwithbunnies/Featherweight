@@ -60,6 +60,11 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 ### Fixed
 - The "Restart as administrator" (and update) banner buttons no longer have their text cut off.
 - The security check no longer warns about Featherweight itself being unsigned; it says so as information instead.
+- Optimize's details now say what each change does in plain words (for example "Background permission for “Phone
+  Link” → off, right now: allowed") instead of registry paths, and every item, including the built-in Windows ones,
+  shows the same "On this PC" facts. Store apps are named the way Windows shows them.
+- The details text no longer gets highlighted after Optimize or Restore default.
+- Task descriptions no longer show the Windows account ID, and odd characters in program details are cleaned up.
 - When a restore point can't be made, the activity log now says why (System Protection off, or the actual error)
   instead of an empty message.
 - Items that are a setting in another app (such as the NVIDIA overlay) show *Running* / *Not running* and are no

@@ -21,7 +21,6 @@ namespace Featherweight
         public static void Describe(List<Optimization> items)
         {
             var found = items.Where(o => o.Discovered && o.Present).ToList();
-            if (found.Count == 0) return;
             var installed = InstalledProducts();
             var conns = SafeConns();
             var procs = ProcScan.Processes().Select(p => new { p, path = ProcScan.PathOf(p) }).ToList();
@@ -71,32 +70,94 @@ namespace Featherweight
                     if (drv != null) o.Facts.Add(drv);
 
                     // ---- right now
-                    var live = new Live();
-                    foreach (var x in procs)
-                    {
-                        bool match = o.ExePaths.Any(e => e != null && (x.path == null
-                            ? !e.EndsWith("\\") && string.Equals(x.p.Name, Path.GetFileNameWithoutExtension(e), StringComparison.OrdinalIgnoreCase)
-                            : e.EndsWith("\\") ? x.path.StartsWith(e, StringComparison.OrdinalIgnoreCase) : string.Equals(x.path, e, StringComparison.OrdinalIgnoreCase)));
-                        if (!match) continue;
-                        live.Count++; live.MB += x.p.PrivMB;
-                        int c; if (conns.TryGetValue(x.p.Id, out c)) live.Connections += c;
-                        try
-                        {
-                            using (var p = Process.GetProcessById(x.p.Id))
-                            {
-                                if (p.MainWindowHandle != IntPtr.Zero) live.Window = true;
-                                var up = DateTime.Now - p.StartTime; if (up > live.Up) live.Up = up;
-                                live.CpuSeconds += p.TotalProcessorTime.TotalSeconds; live.CpuKnown = true;
-                            }
-                        }
-                        catch { } // protected or elevated processes: some details need admin rights
-                    }
-                    o.Facts.Add(LiveText(live));
+                    o.Facts.Add(LiveText(LiveFor(procs.Select(x => Tuple.Create(x.p, x.path)), conns, (p, path) => o.ExePaths.Any(e => e != null && (path == null
+                        ? !e.EndsWith("\\") && string.Equals(p.Name, Path.GetFileNameWithoutExtension(e), StringComparison.OrdinalIgnoreCase)
+                        : e.EndsWith("\\") ? path.StartsWith(e, StringComparison.OrdinalIgnoreCase) : string.Equals(path, e, StringComparison.OrdinalIgnoreCase))))));
                 }
                 catch (Exception ex) { o.Facts.Add("(Some details couldn't be read: " + ex.Message + ")"); }
 
                 o.Description = Compose(o);
             }
+
+            // Reviewed catalog items (Phone Link, PC Manager, Dell…): their own text stays; add the same facts from this PC.
+            foreach (var o in items.Where(x => !x.Discovered && x.Present))
+            {
+                o.Facts.Clear();
+                try { CatalogFacts(o, installed, conns, procs.Select(x => Tuple.Create(x.p, x.path)).ToList()); }
+                catch (Exception ex) { o.Facts.Add("(Some details couldn't be read: " + ex.Message + ")"); }
+            }
+        }
+
+        static Live LiveFor(IEnumerable<Tuple<ProcInfo, string>> procs, Dictionary<int, int> conns, Func<ProcInfo, string, bool> match)
+        {
+            var live = new Live();
+            foreach (var x in procs)
+            {
+                if (!match(x.Item1, x.Item2)) continue;
+                live.Count++; live.MB += x.Item1.PrivMB;
+                int c; if (conns.TryGetValue(x.Item1.Id, out c)) live.Connections += c;
+                try
+                {
+                    using (var p = Process.GetProcessById(x.Item1.Id))
+                    {
+                        if (p.MainWindowHandle != IntPtr.Zero) live.Window = true;
+                        var up = DateTime.Now - p.StartTime; if (up > live.Up) live.Up = up;
+                        live.CpuSeconds += p.TotalProcessorTime.TotalSeconds; live.CpuKnown = true;
+                    }
+                }
+                catch { } // protected or elevated processes: some details need admin rights
+            }
+            return live;
+        }
+
+        /// <summary>Facts for a reviewed catalog item: its services, Store apps and programs as they are on this PC.</summary>
+        static void CatalogFacts(Optimization o, List<Tuple<string, string, string>> installed, Dictionary<int, int> conns, List<Tuple<ProcInfo, string>> procs)
+        {
+            string firstExe = null;
+            foreach (var name in o.Actions.Where(a => a.Type == "service").Select(a => a.D.Str("name")).Distinct())
+            {
+                string start = Engine.ServiceStart(name);
+                if (start == null) continue;
+                string exe = null, words = null;
+                using (var k = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\" + name))
+                    if (k != null)
+                    {
+                        exe = Publisher.ExeFromCommand(k.GetValue("ImagePath") as string);
+                        words = Clean(Native.IndirectString(k.GetValue("Description", null, RegistryValueOptions.DoNotExpandEnvironmentNames) as string));
+                    }
+                if (firstExe == null && exe != null && File.Exists(exe)) firstExe = exe;
+                o.Facts.Add("Service “" + ServiceName(name) + "”: " + ServiceNow("now: " + start + (Engine.ServiceRunning(name) ? ", running" : ", stopped")) + "."
+                            + (exe != null && File.Exists(exe) ? " Program " + Path.GetFileName(exe) + ", " + (Native.HasValidSignature(exe) ? "digitally signed by " + Publisher.Of(exe) : "not digitally signed") + "." : ""));
+                if (words != null) o.Facts.Add("In " + Publisher.Of(exe) + "'s words: “" + Shorten(words, 320) + "”");
+            }
+            var families = o.Actions.Where(a => a.Type == "registry").Select(a => a.D.Str("path") ?? "")
+                .Select(p =>
+                {
+                    int i = p.IndexOf(BackgroundKey, StringComparison.OrdinalIgnoreCase); if (i >= 0) return p.Substring(i + BackgroundKey.Length).Split('\\')[0];
+                    i = p.IndexOf(PackageDataKey, StringComparison.OrdinalIgnoreCase); return i >= 0 ? p.Substring(i + PackageDataKey.Length).Split('\\')[0] : null;
+                })
+                .Where(f => f != null).Distinct(StringComparer.OrdinalIgnoreCase);
+            foreach (var fam in families)
+            {
+                string folder = Discovery.PackageFolder(fam);
+                if (folder == null) { o.Facts.Add("Store app " + AppName(fam) + ": not installed for this account."); continue; }
+                string t, brand; Publisher.Manifest(folder, out t, out brand);
+                o.Facts.Add("Store app " + AppName(fam) + (brand != null ? " by " + brand : "") + ", installed for this account.");
+            }
+            // the programs the catalog says belong to it, as they're running right now
+            if (o.Processes.Count > 0)
+            {
+                var names = new HashSet<string>(o.Processes, StringComparer.OrdinalIgnoreCase);
+                var running = procs.Where(x => names.Contains(x.Item1.Name)).ToList();
+                if (firstExe == null) firstExe = running.Select(x => x.Item2).FirstOrDefault(p => p != null && File.Exists(p));
+                o.Facts.Add(LiveText(LiveFor(running, conns, (p, path) => true)));
+            }
+            if (firstExe != null)
+            {
+                var product = installed.Where(p => firstExe.StartsWith(p.Item1, StringComparison.OrdinalIgnoreCase)).OrderByDescending(p => p.Item1.Length).FirstOrDefault();
+                if (product != null) o.Facts.Add("Part of: " + product.Item2 + (product.Item3 != null ? " (installed " + product.Item3 + ")" : "") + ".");
+            }
+            if (o.Facts.Count == 0) o.Facts.Add("A Windows setting: nothing runs for it, so there's nothing more to read. Its current state is under “What it changes”.");
         }
 
         // ---------------------------------------------------------------- the text shown in the details panel
@@ -221,10 +282,10 @@ namespace Featherweight
 
         static string PackageFacts(Optimization o, string folder)
         {
-            var starts = new List<string>();
-            if (o.Actions.Any(a => (a.D.Str("name") ?? "") == "State" && Check(a) == ItemState.NotApplied)) starts.Add("when you sign in");
-            if (o.Actions.Any(a => (a.D.Str("name") ?? "") == "Disabled" && Check(a) == ItemState.NotApplied)) starts.Add("it may keep running in the background");
-            if (starts.Count > 0) o.Facts.Add("Starts: " + string.Join("; ", starts) + ".");
+            bool signIn = o.Actions.Any(a => (a.D.Str("name") ?? "") == "State" && Check(a) == ItemState.NotApplied);
+            bool background = o.Actions.Any(a => (a.D.Str("name") ?? "") == "Disabled" && Check(a) == ItemState.NotApplied);
+            o.Facts.Add(signIn ? "Starts: when you sign in." : "Starts: when you open it (it doesn't start at sign-in).");
+            o.Facts.Add(background ? "Background: allowed to keep running after you close it." : "Background: not allowed to run in the background.");
             string f = folder == null ? null : Path.Combine(folder, "AppxManifest.xml");
             if (f == null || !File.Exists(f)) return null;
             string xml = File.ReadAllText(f);
@@ -256,10 +317,10 @@ namespace Featherweight
         // Device classes from the driver's INF file (fixed English keywords, the same in every Windows language).
         static readonly Dictionary<string, string> DriverClasses = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            { "MEDIA", "sound" }, { "AudioProcessingObject", "sound effects" }, { "Display", "graphics" }, { "HIDClass", "keyboard, touchpad or other input device" },
+            { "MEDIA", "sound" }, { "AudioProcessingObject", "sound effects" }, { "Display", "graphics" }, { "HIDClass", "input device (keyboard, touchpad and similar)" },
             { "Keyboard", "keyboard" }, { "Mouse", "mouse or touchpad" }, { "Net", "network adapter" }, { "Bluetooth", "Bluetooth" },
             { "Camera", "camera" }, { "Image", "camera or scanner" }, { "Biometric", "fingerprint or face sign-in" }, { "System", "system device" },
-            { "SoftwareComponent", "a device (as a software part of its driver)" }, { "Extension", "a device (as an add-on to its driver)" },
+            { "SoftwareComponent", "SOFTWARE" }, { "Extension", "EXTENSION" },
             { "Firmware", "firmware" }, { "SecurityDevices", "security chip" }, { "Battery", "battery" }, { "Sensor", "sensors" },
             { "USB", "USB" }, { "Printer", "printer" }, { "SmartCardReader", "smart card reader" },
         };
@@ -286,8 +347,11 @@ namespace Featherweight
                 else if (section == "strings" && !strings.ContainsKey(key)) strings[key] = val;
             }
             if (provider != null && provider.StartsWith("%")) { string s; provider = strings.TryGetValue(provider.Trim('%'), out s) ? s : null; }
-            string what; if (cls == null || !DriverClasses.TryGetValue(cls, out what)) what = "a device";
-            return "Came with: the driver for " + what + (provider != null ? " (driver by " + Publisher.Normalize(provider) + ")" : "") + ".";
+            string what; if (cls == null || !DriverClasses.TryGetValue(cls, out what)) what = "device";
+            string by = provider != null ? " from " + Publisher.Normalize(provider) : "";
+            if (what == "SOFTWARE") return "Came with: a hardware driver package" + by + ", as a software part of the driver.";
+            if (what == "EXTENSION") return "Came with: a hardware driver package" + by + ", as an add-on to the driver.";
+            return "Came with: the " + what + " driver" + by + ".";
         }
 
         // ---------------------------------------------------------------- installed programs (Settings → Apps)
@@ -322,13 +386,152 @@ namespace Featherweight
                     }
         }
 
+        // ---------------------------------------------------------------- what a change does, in plain words
+        const string BackgroundKey = @"\BackgroundAccessApplications\";
+        const string PackageDataKey = @"\AppModel\SystemAppData\";
+
+        /// <summary>
+        /// One change as a person would say it, with its current state, e.g.
+        /// "• Background permission for OMEN Light Studio → off   (right now: allowed)". Null = folded into another line.
+        /// </summary>
+        public static string PlainChange(PlanItem a, ItemState s, string det)
+        {
+            var d = a.D;
+            string mark = s == ItemState.Applied ? "✓ " : s == ItemState.NotFound ? "– " : s == ItemState.Error ? "! " : "• ";
+            string what, now = null;
+            switch (a.Type)
+            {
+                case "service":
+                    {
+                        string name = d.Str("name"), shown = ServiceName(name);
+                        string target = (d.Str("start") ?? "").ToLowerInvariant() == "disabled" ? "never starts (disabled)" : "starts only when needed";
+                        what = "Service “" + shown + "” → " + target + (d.Bool("stop") ? ", and stop it now" : "");
+                        now = s == ItemState.NotFound ? "not on this PC" : ServiceNow(det);
+                        break;
+                    }
+                case "task":
+                    what = "Scheduled task “" + Regex.Replace(d.Str("name") ?? "", @"-sid-S-1-[\d-]+$", "") + "” → off";
+                    now = s == ItemState.NotFound ? "not on this PC" : det.Contains("disabled") ? "off" : "on";
+                    break;
+                case "cert":
+                    what = "Remove the certificate “" + (d.Str("label") ?? d.Str("thumbprint")) + "”";
+                    now = s == ItemState.Applied ? "already removed" : "installed";
+                    break;
+                case "registry":
+                    {
+                        string path = d.Str("path") ?? "", name = d.Str("name") ?? "";
+                        int bg = path.IndexOf(BackgroundKey, StringComparison.OrdinalIgnoreCase);
+                        int pd = path.IndexOf(PackageDataKey, StringComparison.OrdinalIgnoreCase);
+                        if (bg >= 0)
+                        {
+                            if (name.Equals("DisabledByUser", StringComparison.OrdinalIgnoreCase)) return null; // same switch as "Disabled"
+                            what = "Background permission for " + AppName(path.Substring(bg + BackgroundKey.Length)) + " → off";
+                            now = s == ItemState.Applied ? "off" : "allowed";
+                        }
+                        else if (pd >= 0 && name.Equals("State", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var parts = path.Substring(pd + PackageDataKey.Length).Split('\\');
+                            what = "Start at sign-in for " + AppName(parts[0]) + " → off (same switch as Task Manager's Startup apps)";
+                            now = s == ItemState.Applied ? "off" : "on";
+                        }
+                        else if (path.IndexOf(@"\StartupApproved\", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            what = "Start at sign-in for “" + name + "” → off (same switch as Task Manager's Startup apps)";
+                            now = s == ItemState.Applied ? "off" : "on";
+                        }
+                        else if (d.Str("label") != null)
+                        {
+                            what = d.Str("label");
+                            now = s == ItemState.Applied ? "done" : s == ItemState.NotFound ? "not on this PC" : "not yet";
+                        }
+                        else
+                        {
+                            what = "Windows setting “" + name + "” → " + Engine.Normalize(d["value"]);
+                            now = det.Replace("now: ", "").Replace("not set", "Windows default");
+                        }
+                        break;
+                    }
+                default: what = a.Describe(); break;
+            }
+            if (s == ItemState.Error) now = "couldn't check: " + det;
+            return mark + what + (now != null ? "   (right now: " + now + ")" : "");
+        }
+
+        static readonly Dictionary<string, string> names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        static string ServiceName(string name)
+        {
+            lock (names)
+            {
+                string hit; if (names.TryGetValue("s|" + name, out hit)) return hit;
+                string shown = name;
+                try { using (var sc = new System.ServiceProcess.ServiceController(name)) if (!string.IsNullOrEmpty(sc.DisplayName)) shown = sc.DisplayName; } catch { }
+                return names["s|" + name] = shown;
+            }
+        }
+
+        /// <summary>A Store app's name as Windows shows it, without quotes; null if Windows doesn't say.</summary>
+        public static string AppTitle(string family)
+        {
+            string q = AppName(family).Trim('“', '”');
+            string n = family.Split('_')[0]; int dot = n.IndexOf('.');
+            string guess = Regex.Replace(dot > 0 ? n.Substring(dot + 1) : n, "([a-z])([A-Z])", "$1 $2");
+            return q == guess ? null : q;
+        }
+
+        /// <summary>Store app family name → its name as shown in Windows ("Microsoft.YourPhone_8wekyb3d8bbwe" → "Phone Link").</summary>
+        static string AppName(string family)
+        {
+            lock (names)
+            {
+                string hit; if (names.TryGetValue("p|" + family, out hit)) return hit;
+                string title = null, brand;
+                string folder = Discovery.PackageFolder(family);
+                if (folder != null) Publisher.Manifest(folder, out title, out brand);
+                if (title == null && folder != null)
+                {
+                    // The name is a translated resource ("ms-resource:AppName"): ask Windows for it, as Start and Settings do.
+                    try
+                    {
+                        string xml = File.ReadAllText(Path.Combine(folder, "AppxManifest.xml"));
+                        var props = Regex.Match(xml, "<Properties>(.*?)</Properties>", RegexOptions.Singleline).Groups[1].Value;
+                        var dn = Regex.Match(props, "<DisplayName>([^<]+)</DisplayName>");
+                        string full = Discovery.PackageFullName(family) ?? Path.GetFileName(folder.TrimEnd('\\'));
+                        if (dn.Success && dn.Groups[1].Value.StartsWith("ms-resource:"))
+                            title = Clean(Native.IndirectString("@{" + full + "?" + ResourceUri(family.Split('_')[0], dn.Groups[1].Value.Trim()) + "}"));
+                    }
+                    catch { }
+                }
+                if (string.IsNullOrEmpty(title))
+                {
+                    string n = family.Split('_')[0]; int dot = n.IndexOf('.');
+                    title = Regex.Replace(dot > 0 ? n.Substring(dot + 1) : n, "([a-z])([A-Z])", "$1 $2");
+                }
+                return names["p|" + family] = "“" + title + "”";
+            }
+        }
+
+        static string ServiceNow(string det)
+        {
+            // det looks like "now: auto, running" (fixed words from Engine, not Windows' translated text)
+            string t = det.Replace("now: ", "");
+            t = Regex.Replace(t, @"\bdelayed-auto\b", "starts shortly after Windows");
+            t = Regex.Replace(t, @"\bauto\b", "starts with Windows");
+            t = Regex.Replace(t, @"\bdemand\b", "starts when needed");
+            t = Regex.Replace(t, @"\bdisabled\b", "disabled");
+            return t;
+        }
+
         // ---------------------------------------------------------------- helpers
         static Dictionary<int, int> SafeConns() { try { return Native.TcpConnectionsByPid(); } catch { return new Dictionary<int, int>(); } }
 
         static string Clean(string s)
         {
+            if (s == null) return null;
+            s = Regex.Replace(s, @"[\x00-\x1F\x7F]", " ");                       // stray control characters in file details
+            s = Regex.Replace(s, @"-?sid-S-1-[\d-]+|S-1-5-21-[\d-]+", "");      // account IDs in per-user task text: private
             if (string.IsNullOrWhiteSpace(s) || s.StartsWith("@") || s.StartsWith("ms-resource:")) return null;
-            s = Regex.Replace(s.Trim(), @"\s+", " ");
+            s = Regex.Replace(s.Trim(), @"\s+", " ").Trim();
             return s.Length == 0 ? null : s;
         }
 

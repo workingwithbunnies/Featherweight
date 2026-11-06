@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "updated": "2026-11-06",
   "about": "Featherweight's own descriptions of background software, matched to what the Optimize page finds. Written and checked by the project; see docs/KNOWLEDGE.md. Every sentence must be true on any PC; say how sure we are in 'confidence'.",
   "entries": [
@@ -24,10 +24,10 @@
       "match": { "package": "AD2F1837.OMENLightStudio_*" },
       "title": "OMEN Light Studio (background)",
       "about": "HP's app for keyboard and accessory lighting on OMEN PCs. Animated effects are run by the software, so they use some processor time while they play.",
-      "lose": "Custom or animated lighting effects may stop until you open Light Studio.",
+      "lose": "Animated lighting effects. In a test on an OMEN laptop, switching this and the Light Studio helper off stopped the animated keyboard lighting after a restart; Restore default brought it back.",
       "keepIf": "you use custom or animated keyboard or accessory lighting.",
       "suggest": "optional",
-      "confidence": "based on HP's Light Studio help; what happens when it's switched off isn't documented",
+      "confidence": "tested on one OMEN laptop by the Featherweight project, plus HP's Light Studio help",
       "reviewed": "2026-11-06",
       "sources": [ "https://www.hp.com/emea_middle_east-en/gaming-pc/light-studio.html" ]
     },
@@ -36,10 +36,10 @@
       "match": { "task": "LightStudioHelper", "publisher": "HP" },
       "title": "OMEN Light Studio helper",
       "about": "A helper for OMEN Light Studio that starts when you sign in. HP support answers treat it as part of Light Studio (restarting it is one of their fixes for lighting problems).",
-      "lose": "Light Studio effects may not start until you open Light Studio.",
-      "keepIf": "you use OMEN Light Studio.",
+      "lose": "Animated lighting effects. In a test on an OMEN laptop, switching this and Light Studio's background permission off stopped the animated keyboard lighting after a restart; Restore default brought it back.",
+      "keepIf": "you use OMEN Light Studio lighting effects.",
       "suggest": "optional",
-      "confidence": "based on HP community answers; HP doesn't document this helper",
+      "confidence": "tested on one OMEN laptop by the Featherweight project, plus HP community answers",
       "reviewed": "2026-11-06",
       "sources": [ "https://h30434.www3.hp.com/t5/Gaming-Notebooks/Omen-Light-Studio-Stopped-Working/m-p/8249355" ]
     },
