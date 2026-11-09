@@ -19,8 +19,11 @@ namespace Featherweight
     class WelcomeForm : Form
     {
         const int W = 840; // design width at 100 % display scale
-        static readonly Color HeroFrom = Theme.Sidebar, HeroTo = Color.FromArgb(0, 84, 158);
-        static readonly Color Blue = Theme.Accent, Green = Theme.Ok, Amber = Color.FromArgb(202, 128, 0);
+        static Color HeroFrom { get { return Theme.Current.HeroFrom; } }
+        static Color HeroTo { get { return Theme.Current.HeroTo; } }
+        static Color Blue { get { return Theme.Accent; } }
+        static Color Green { get { return Theme.Ok; } }
+        static Color Amber { get { return Theme.Warn; } }
         const string Heading = "Welcome to Featherweight";
         const string Lead = "See what's using your memory, switch off the background apps you don't need, and undo anything.";
         static readonly string[] Pills = { "Free and open source", "No tracking", "Every change can be undone" };
@@ -41,7 +44,7 @@ namespace Featherweight
         {
             // Featherweight scales its own sizes; WinForms' automatic scaling stays off so nothing is scaled twice.
             AutoScaleMode = AutoScaleMode.None;
-            Text = "Welcome to Featherweight"; Font = Theme.Base; BackColor = Theme.Bg;
+            Text = "Welcome to Featherweight"; Font = Theme.Base; BackColor = Theme.Bg; ForeColor = Theme.Text;
             FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = MinimizeBox = false; StartPosition = FormStartPosition.Manual;
             AutoScroll = true; // only used when even the widest layout is taller than the screen
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
@@ -54,6 +57,7 @@ namespace Featherweight
             root.Controls.Add(foot);
             Controls.Add(root);
 
+            ThemeApply.To(this);
             Load += (s, e) => FitToScreen();
             FormClosed += (s, e) => { Settings.CheckUpdates = updates.Checked; Settings.FirstRunDone = true; Settings.Save(); if (logo != null) logo.Dispose(); titleFont.Dispose(); };
         }
@@ -311,6 +315,26 @@ namespace Featherweight
             stack.Controls.Add(updateStatus);
             descriptions.Text = "Item descriptions: version " + Knowledge.Version + " (" + Knowledge.Origin + "), " + Knowledge.Entries.Count + " reviewed entries.";
             stack.Controls.Add(descriptions);
+
+            stack.Controls.Add(Section("Theme"));
+            var tiles = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(Theme.S(940), 0), Margin = Theme.Pad(0, 2, 0, 0) };
+            var tip = new ToolTip();
+            foreach (var pal in Palettes.All)
+            {
+                var tile = new ThemeTile(pal) { Selected = pal == Theme.Current };
+                tip.SetToolTip(tile, pal.Name + ": " + pal.Blurb);
+                tile.Click += (s, e) =>
+                {
+                    if (pal == Theme.Current) return;
+                    Settings.Theme = pal.Id; Settings.Save();
+                    Theme.Use(pal);
+                    var main = FindForm() as MainForm;
+                    if (main != null) main.Rebuild(); // the window is built again in the new look, on this page
+                };
+                tiles.Controls.Add(tile);
+            }
+            stack.Controls.Add(tiles);
+            stack.Controls.Add(Note("Themes only change how Featherweight looks. Click one to switch straight away."));
 
             stack.Controls.Add(Section("Options"));
             updates.Checked = Settings.CheckUpdates;

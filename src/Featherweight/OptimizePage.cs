@@ -24,7 +24,7 @@ namespace Featherweight
         readonly TextBox dChanges = new TextBox
         {
             Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, WordWrap = true, Dock = DockStyle.Fill,
-            Font = Theme.Base, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(250, 251, 253),
+            Font = Theme.Base, BorderStyle = BorderStyle.FixedSingle, BackColor = Theme.Field, ForeColor = Theme.Text,
             TabStop = false // otherwise it gets the focus after a dialog closes, and Windows selects all its text
         };
         readonly Label changesLabel = Theme.Label("What it changes", Theme.Bold, Theme.Muted);

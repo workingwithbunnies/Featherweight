@@ -251,7 +251,7 @@ namespace Featherweight
         public DiagnosticsDialog()
         {
             AutoScaleMode = AutoScaleMode.None; // sizes go through Theme.S, like the main window
-            Text = "Export diagnostics"; Font = Theme.Base; BackColor = Theme.Card;
+            Text = "Export diagnostics"; Font = Theme.Base; BackColor = Theme.Card; ForeColor = Theme.Text;
             FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = MinimizeBox = false; ShowInTaskbar = false; StartPosition = FormStartPosition.CenterParent;
             AutoSize = true; AutoSizeMode = AutoSizeMode.GrowAndShrink;
             // Form.Padding only moves docked controls, so the margins live on the panel itself.
@@ -266,9 +266,9 @@ namespace Featherweight
             // The public-sharing warning as a soft callout instead of a block of orange text.
             var callout = new Panel { BackColor = Theme.Banner, Padding = Theme.Pad(12, 10, 12, 10), Margin = Theme.Pad(0, 16, 0, 0), Width = Wide, AutoSize = true, MinimumSize = new Size(Wide, 0) };
             var calloutText = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, BackColor = Theme.Banner, Dock = DockStyle.Top };
-            var ct = Theme.Label("GitHub issues are public", Theme.Bold); ct.Margin = Theme.Pad(0, 0, 0, 2); ct.BackColor = Theme.Banner;
+            var ct = Theme.Label("GitHub issues are public", Theme.Bold, Theme.BannerText); ct.Margin = Theme.Pad(0, 0, 0, 2); ct.BackColor = Theme.Banner;
             var cb = Theme.Label("Anyone can read what you attach. Featherweight removes your user name, PC name, account IDs and email addresses, " +
-                                 "and opens the file so you can check it first.", Theme.Small);
+                                 "and opens the file so you can check it first.", Theme.Small, Theme.BannerText);
             cb.MaximumSize = new Size(Wide - Theme.S(24), 0); cb.Margin = new Padding(0); cb.BackColor = Theme.Banner;
             calloutText.Controls.Add(ct); calloutText.Controls.Add(cb);
             callout.Controls.Add(calloutText);
@@ -282,6 +282,7 @@ namespace Featherweight
             stack.Controls.Add(row);
             AcceptButton = ok; CancelButton = cancel;
             Controls.Add(stack);
+            ThemeApply.To(this);
         }
 
         static readonly int Wide = Theme.S(520);   // width of the text column

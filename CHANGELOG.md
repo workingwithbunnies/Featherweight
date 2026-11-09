@@ -5,6 +5,11 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 ## [Unreleased]
 
 ### Added
+- **Themes** (Settings & about → Theme): six looks, switched with one click and remembered. *Featherweight* (the
+  standard look), *Classic 9x* (grey bevelled buttons, navy highlights and a green-on-black Task Manager style graph,
+  inspired by Windows 95/98), *XP Blue* (beige windows, a blue side pane, rounded buttons and a green main button,
+  inspired by Windows XP), *Frutiger Aero* (sky-blue glass and glossy buttons, inspired by Windows 7), *Midnight*
+  (dark mode) and *Synthwave* (neon pink and cyan on purple). Themes only change how the app looks.
 - Dashboard: click a company in "By company" to see its programs (how many copies of each are running and their
   memory); click again to close it.
 - Featherweight tidies its data folder on start: it keeps the 30 newest unnamed snapshots (named ones stay until you
