@@ -60,9 +60,14 @@ On the Dashboard: pushes idle memory out of every program, which is handy right 
 exactly how much was freed. The small arrow next to the button offers a deep clean that also empties the file cache.
 Honest note: Windows already manages memory well, so this is a short-term boost. The lasting win is fewer background apps.
 
-### 🛡️ Security check (read-only)
-Antivirus status (including third-party antivirus), unsigned programs, unusual root certificates, startup entries,
-scheduled tasks, common hijack points and open network ports, all explained in plain language.
+### 🛡️ Security check
+A plain-language look at how the PC is protected: antivirus (including third-party), when Defender last scanned (with a
+"quick scan now" button), firewall, SmartScreen, User Account Control, Secure Boot, TPM, drive encryption, Core
+isolation, Windows Update, Remote Desktop, old SMB1 file sharing, automatic sign-in, browser extensions, unsigned
+programs, unusual root certificates, startup entries, scheduled tasks, services, hijack points and open network ports.
+It only reads. A few findings offer a backed-up fix (remove a certificate, switch off a startup entry or task running
+from a user folder); for Windows' own security settings it opens the right Windows page instead of changing them itself.
+It isn't an antivirus: Microsoft Defender (or your own antivirus) does the scanning.
 
 ### 📸 Snapshots
 Save a snapshot of memory use and compare two, e.g. before and after a change.

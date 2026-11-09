@@ -16,7 +16,10 @@ namespace Featherweight
         public MainForm(string startPage)
         {
             Text = "Featherweight" + (Admin.IsAdmin ? " (Administrator)" : "");
-            Size = new Size(1220, 800); MinimumSize = new Size(1000, 660);
+            // Sizes grow with the display scale, but never beyond the screen.
+            var screen = Screen.PrimaryScreen.WorkingArea;
+            Size = new Size(Math.Min(Theme.S(1220), screen.Width), Math.Min(Theme.S(800), screen.Height));
+            MinimumSize = new Size(Math.Min(Theme.S(1000), screen.Width), Math.Min(Theme.S(660), screen.Height));
             StartPosition = FormStartPosition.CenterScreen; Font = Theme.Base; BackColor = Theme.Bg;
             AutoScaleMode = AutoScaleMode.Dpi;
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
@@ -26,7 +29,7 @@ namespace Featherweight
             content.Controls.Add(pageHost);
             if (!Admin.IsAdmin) content.Controls.Add(Banner());
 
-            var sidebar = new Panel { Dock = DockStyle.Left, Width = 212, BackColor = Theme.Sidebar };
+            var sidebar = new Panel { Dock = DockStyle.Left, Width = Theme.S(212), BackColor = Theme.Sidebar };
             Controls.Add(content);
             Controls.Add(sidebar);
 
@@ -40,7 +43,7 @@ namespace Featherweight
 
             var footer = new Label
             {
-                Dock = DockStyle.Bottom, Height = 54, ForeColor = Color.FromArgb(130, 138, 150), Font = Theme.Small,
+                Dock = DockStyle.Bottom, Height = Theme.S(54), ForeColor = Color.FromArgb(130, 138, 150), Font = Theme.Small,
                 Padding = new Padding(20, 0, 10, 12), TextAlign = ContentAlignment.BottomLeft,
                 // No PC or user name here: people share screenshots in bug reports.
                 Text = (Admin.IsAdmin ? "● Administrator" : "○ Standard user") + "\nVersion " + AppVersion
@@ -53,10 +56,10 @@ namespace Featherweight
             foreach (var t in labels.Reverse()) sidebar.Controls.Add(NavButton(t.Item1, t.Item2));
             var brand = new Label
             {
-                Dock = DockStyle.Top, Height = 78, Text = "Featherweight", ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 17f),
+                Dock = DockStyle.Top, Height = Theme.S(78), Text = "Featherweight", ForeColor = Color.White, Font = Theme.H1,
                 Padding = new Padding(18, 0, 0, 8), TextAlign = ContentAlignment.BottomLeft
             };
-            var tag = new Label { Dock = DockStyle.Top, Height = 30, Text = "memory · startup · security", ForeColor = Color.FromArgb(130, 138, 150), Font = Theme.Small, Padding = new Padding(21, 0, 0, 0) };
+            var tag = new Label { Dock = DockStyle.Top, Height = Theme.S(30), Text = "memory · startup · security", ForeColor = Color.FromArgb(130, 138, 150), Font = Theme.Small, Padding = new Padding(21, 0, 0, 0) };
             sidebar.Controls.Add(tag);
             sidebar.Controls.Add(brand);
 
@@ -104,7 +107,7 @@ namespace Featherweight
             var bar = new TableLayoutPanel
             {
                 Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = back,
-                Padding = new Padding(20, 7, 16, 7), MinimumSize = new Size(0, 46), ColumnCount = buttons.Length + 1, RowCount = 1
+                Padding = new Padding(20, 7, 16, 7), MinimumSize = new Size(0, Theme.S(46)), ColumnCount = buttons.Length + 1, RowCount = 1
             };
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             bar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -137,7 +140,7 @@ namespace Featherweight
         {
             var b = new Button
             {
-                Dock = DockStyle.Top, Height = 42, Text = "    " + text, TextAlign = ContentAlignment.MiddleLeft, FlatStyle = FlatStyle.Flat,
+                Dock = DockStyle.Top, Height = Theme.S(42), Text = "    " + text, TextAlign = ContentAlignment.MiddleLeft, FlatStyle = FlatStyle.Flat,
                 ForeColor = Theme.SidebarText, BackColor = Theme.Sidebar, Font = Theme.Base, Cursor = Cursors.Hand, UseVisualStyleBackColor = false,
                 UseMnemonic = false // show "&" literally ("Settings & about")
             };

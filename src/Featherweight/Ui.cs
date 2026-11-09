@@ -17,6 +17,14 @@ namespace Featherweight
         public static readonly Color Ok = Color.FromArgb(16, 124, 16), Warn = Color.FromArgb(196, 98, 0), Bad = Color.FromArgb(196, 43, 28), Info = Color.FromArgb(0, 99, 177);
         public static readonly Color Banner = Color.FromArgb(255, 244, 206), Commit = Color.FromArgb(230, 140, 20);
 
+        /// <summary>
+        /// Display scale: 1.0 at 100 %, 1.25 at 125 %… Featherweight draws itself sharply at any scale (DPI-aware), so text
+        /// grows with the display but plain pixel numbers don't: fixed widths and heights go through S() to grow with it.
+        /// </summary>
+        public static float Dpi = ReadDpi();
+        static float ReadDpi() { try { using (var g = Graphics.FromHwnd(IntPtr.Zero)) return Math.Max(1f, g.DpiX / 96f); } catch { return 1f; } }
+        public static int S(int px) { return (int)Math.Round(px * Dpi); }
+
         public static readonly Font Base = new Font("Segoe UI", 9.75f);
         public static readonly Font Small = new Font("Segoe UI", 8.75f);
         public static readonly Font Bold = new Font("Segoe UI Semibold", 9.75f);
@@ -57,7 +65,7 @@ namespace Featherweight
         {
             var p = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(0, 0, 0, 10) };
             p.Controls.Add(Label(title, H1));
-            var sub = Label(subtitle, Base, Muted); sub.MaximumSize = new Size(900, 0);
+            var sub = Label(subtitle, Base, Muted); sub.MaximumSize = new Size(S(900), 0);
             p.Controls.Add(sub);
             return p;
         }
@@ -77,7 +85,7 @@ namespace Featherweight
             for (int i = 0; i < columns.Length; i += 2)
             {
                 int w = (int)columns[i + 1];
-                var ch = lv.Columns.Add((string)columns[i], w < 0 ? 100 : w);
+                var ch = lv.Columns.Add((string)columns[i], w < 0 ? S(100) : S(w));
                 if (w < 0) ch.Tag = "fill";
             }
             // Last "fill" column takes the remaining width.
@@ -91,7 +99,7 @@ namespace Featherweight
             var fill = lv.Columns.Cast<ColumnHeader>().FirstOrDefault(c => (c.Tag as string) == "fill");
             if (fill == null) return;
             int other = lv.Columns.Cast<ColumnHeader>().Where(c => c != fill).Sum(c => c.Width);
-            fill.Width = Math.Max(120, lv.ClientSize.Width - other - 4);
+            fill.Width = Math.Max(S(120), lv.ClientSize.Width - other - 4);
         }
 
         public static TextBox LogBox()
@@ -124,6 +132,7 @@ namespace Featherweight
         public Card(string title)
         {
             BackColor = Theme.Card; Padding = new Padding(14, 10, 14, 10); Margin = new Padding(0, 0, 12, 12); Dock = DockStyle.Fill;
+            ResizeRedraw = true; // otherwise the old border stays painted inside the card after the window grows
             caption = Theme.Label(title.ToUpper(), Theme.Small, Theme.Muted);
             value = Theme.Label("–", Theme.Big); value.Margin = new Padding(0, 2, 0, 2);
             sub = Theme.Label("", Theme.Small, Theme.Muted);

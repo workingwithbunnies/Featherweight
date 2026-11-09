@@ -56,6 +56,13 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
   describe items, never mark them Recommended).
 - Settings & about says when Windows' System Protection is off (so no restore points can be made) and opens its settings.
 
+- Security check, much more thorough: firewall per network type (or another firewall), SmartScreen, User Account
+  Control, Secure Boot, TPM and drive encryption (as administrator), Core isolation, Windows Update (last install,
+  switched off, restart pending), Remote Desktop, SMB1, automatic sign-in with a stored password, services running
+  from user folders, browser extensions (Chrome, Edge, Brave, Vivaldi, Firefox) and when Defender last scanned, with
+  a "Run a quick scan now" button that uses Defender itself. A summary at the top says what needs attention; levels
+  read Act now / Look at / Note / OK. "Open in Windows" goes to the exact Settings or Windows Security page, and
+  startup entries or tasks running from user folders can be switched off (backed up, undoable).
 - Optimize: **Copy for a report** copies just the selected app's names, facts and changes (personal details removed)
   and offers to open the "Describe an app" request form.
 
@@ -71,6 +78,13 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 - Store apps are grouped by their publisher, and per-user task names no longer show the account's ID.
 
 ### Fixed
+- Security check: the hint under the buttons is normal-size text across the page instead of a narrow block of large
+  grey text.
+- Export diagnostics: the dialog has even margins, each description lines up with its checkbox, the public-sharing
+  warning is a soft yellow box instead of orange text, and the buttons sit on the right like in Windows' own dialogs.
+- At display scales above 100 % (125 %, 150 %…) the sidebar, list columns and the Optimize details panel grow with the
+  text, so the app name and words like "Recommended" or "Not optimized" are no longer cut off. Dashboard cards no
+  longer show stray border lines after the window is resized.
 - The "Restart as administrator" (and update) banner buttons no longer have their text cut off.
 - The security check no longer warns about Featherweight itself being unsigned; it says so as information instead.
 - Optimize's details now say what each change does in plain words (for example "Background permission for “Phone
