@@ -457,9 +457,11 @@ namespace Featherweight
     class SecurityPage : Page
     {
         readonly ListView list = Theme.List("Level", 90, "Area", 120, "Finding", -1);
-        readonly TextBox detail = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Both, Dock = DockStyle.Fill, Font = Theme.Mono, BackColor = Color.FromArgb(250, 251, 253), BorderStyle = BorderStyle.FixedSingle, WordWrap = false };
-        readonly Button scan = Theme.Button("Run security check", true), save = Theme.Button("Save report"), fix = Theme.Button("Remove this certificate (backed up)");
+        readonly TextBox detail = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, Font = Theme.Base, BackColor = Color.FromArgb(250, 251, 253), BorderStyle = BorderStyle.FixedSingle, WordWrap = true, TabStop = false };
+        readonly Button scan = Theme.Button("Run security check", true), save = Theme.Button("Save report"), fix = Theme.Button("Fix (backed up)", true), open = Theme.Button("Open in Windows");
         readonly Label status = Theme.Label("", Theme.Base, Theme.Muted);
+        readonly Label summary = new Label { Dock = DockStyle.Top, AutoSize = true, Font = Theme.H2, ForeColor = Theme.Muted, Padding = new Padding(0, 2, 0, 8), UseMnemonic = false,
+                                             Text = "Run the check to see how this PC is protected. It only reads; nothing changes unless you click a fix." };
         List<Finding> findings = new List<Finding>();
 
         public SecurityPage()
@@ -468,38 +470,56 @@ namespace Featherweight
             scan.Click += async (s, e) => await Scan();
             save.Click += (s, e) => Save();
             fix.Click += async (s, e) => await Fix();
-            fix.Visible = false; save.Enabled = false;
+            open.Click += async (s, e) => await Open();
+            fix.Visible = open.Visible = false; save.Enabled = false;
             status.Margin = new Padding(6, 8, 0, 0);
             var row = Theme.ButtonRow();
-            row.Controls.AddRange(new Control[] { scan, save, fix, status });
+            row.Controls.AddRange(new Control[] { scan, save, status });
+
+            var actions = Theme.ButtonRow(); actions.Dock = DockStyle.Bottom; actions.Padding = new Padding(0, 6, 0, 0);
+            actions.Controls.AddRange(new Control[] { fix, open });
+            var detailPanel = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Bg };
+            detailPanel.Controls.Add(detail); detailPanel.Controls.Add(actions);
 
             var split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterWidth = 12, BackColor = Theme.Bg };
             split.Panel1.Controls.Add(list);
-            split.Panel2.Controls.Add(Ui.Section("Details", detail));
+            split.Panel2.Controls.Add(Ui.Section("Details", detailPanel));
             split.SizeChanged += (s, e) => { if (split.Height > 200) split.SplitterDistance = (int)(split.Height * 0.55); };
+            summary.SizeChanged += (s, e) => summary.MaximumSize = new Size(Math.Max(200, Width - 60), 0);
 
             Controls.Add(split);
+            Controls.Add(summary);
             Controls.Add(row);
-            Controls.Add(Theme.Header("Security check", "Read-only sweep: Defender, unsigned programs, custom root certificates, autostart, scheduled tasks, hijack points and listening ports."));
+            Controls.Add(Theme.Header("Security check",
+                "A read-only look at how this PC is protected: antivirus, Windows' own protections, updates, sign-in and sharing, startup entries, " +
+                "certificates, browser extensions and more. It isn't an antivirus; Microsoft Defender (or your own antivirus) does the scanning."));
+        }
+
+        static string LevelText(Severity s)
+        {
+            switch (s) { case Severity.Alert: return "Act now"; case Severity.Warning: return "Look at"; case Severity.Info: return "Note"; default: return "OK"; }
         }
 
         async Task Scan()
         {
-            scan.Enabled = false; fix.Visible = false; list.Items.Clear(); detail.Text = "";
+            scan.Enabled = false; fix.Visible = open.Visible = false; list.Items.Clear(); detail.Text = "";
+            summary.Text = "Checking…"; summary.ForeColor = Theme.Muted;
             findings = await Task.Run(() => SecurityScan.Run(p => BeginInvoke(new Action(() => status.Text = p))));
             list.BeginUpdate();
             foreach (var f in findings)
             {
-                var it = new ListViewItem(new[] { f.Severity.ToString(), f.Area, f.Title }) { Tag = f, UseItemStyleForSubItems = false };
+                var it = new ListViewItem(new[] { LevelText(f.Severity), f.Area, f.Title }) { Tag = f, UseItemStyleForSubItems = false };
                 it.SubItems[0].ForeColor = f.Severity == Severity.OK ? Theme.Ok : f.Severity == Severity.Info ? Theme.Info : f.Severity == Severity.Warning ? Theme.Warn : Theme.Bad;
                 it.SubItems[0].Font = Theme.Bold;
                 list.Items.Add(it);
             }
             list.EndUpdate(); Theme.FillColumn(list);
-            int alerts = findings.Count(f => f.Severity == Severity.Alert), warns = findings.Count(f => f.Severity == Severity.Warning);
-            status.Text = (alerts == 0 && warns == 0 ? "Looks clean. " : "") + alerts + " alert(s), " + warns + " warning(s), " + findings.Count(f => f.Severity == Severity.Info) + " info" +
-                          (Admin.IsAdmin ? "" : "  ·  run as administrator for the full check");
-            status.ForeColor = alerts > 0 ? Theme.Bad : warns > 0 ? Theme.Warn : Theme.Ok;
+            int alerts = findings.Count(f => f.Severity == Severity.Alert), warns = findings.Count(f => f.Severity == Severity.Warning), notes = findings.Count(f => f.Severity == Severity.Info);
+            summary.Text = alerts > 0 ? alerts + (alerts == 1 ? " thing needs" : " things need") + " attention now" + (warns > 0 ? ", and " + warns + " more to look at" : "") + ". Select one to see what to do."
+                         : warns > 0 ? warns + (warns == 1 ? " thing" : " things") + " to look at. Select one to see what to do."
+                         : "Everything important looks good." + (notes > 0 ? " " + notes + " note(s) below, for your information." : "");
+            summary.ForeColor = alerts > 0 ? Theme.Bad : warns > 0 ? Theme.Warn : Theme.Ok;
+            status.Text = findings.Count(f => f.Severity == Severity.OK) + " checks OK" + (Admin.IsAdmin ? "" : "  ·  run as administrator for the full check");
             scan.Enabled = true; save.Enabled = true;
         }
 
@@ -509,27 +529,51 @@ namespace Featherweight
         {
             var f = Selected;
             detail.Text = f == null ? "" : f.Title + "\r\n\r\n" + f.Detail;
+            detail.Select(0, 0);
             fix.Visible = f != null && f.Fix != null;
+            if (fix.Visible) fix.Text = f.FixLabel ?? (f.Fix.Type == "cert" ? "Remove this certificate (backed up)" : "Fix (backed up)");
+            open.Visible = f != null && f.OpenTarget != null;
+            if (open.Visible) open.Text = f.OpenLabel ?? "Open in Windows";
         }
 
         void Save()
         {
             string path = Path.Combine(Paths.Logs, "security-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt");
-            File.WriteAllLines(path, new[] { "Featherweight security check " + DateTime.Now + (Admin.IsAdmin ? " (administrator)" : " (standard user)"), "" }
-                .Concat(findings.SelectMany(f => new[] { "[" + f.Severity + "] " + f.Area + ": " + f.Title, "    " + (f.Detail ?? "").Replace("\r\n", "\r\n    "), "" })));
-            MessageBox.Show(FindForm(), "Saved to\n" + path, "Featherweight");
+            File.WriteAllLines(path, new[] { "Featherweight security check " + DateTime.Now + (Admin.IsAdmin ? " (administrator)" : " (standard user)"), summary.Text, "" }
+                .Concat(findings.SelectMany(f => new[] { "[" + LevelText(f.Severity) + "] " + f.Area + ": " + f.Title, "    " + (f.Detail ?? "").Replace("\r\n", "\r\n    "), "" })));
+            MessageBox.Show(FindForm(), "Saved to\n" + Paths.Display + "\\logs\\" + Path.GetFileName(path) + "\n\nIt stays on this PC.", "Featherweight");
         }
 
         async Task Fix()
         {
             var f = Selected; if (f == null || f.Fix == null) return;
-            if (!Admin.Require(FindForm(), "Security", "Removing a certificate")) return;
-            if (MessageBox.Show(FindForm(), "Remove \"" + f.Fix.D.Str("label") + "\" from " + f.Fix.D.Str("location") + "\\Root?\n\nA copy is saved first; you can put it back on the Backups / Undo page.",
-                    "Remove certificate", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != DialogResult.OK) return;
-            var plan = new Plan { File = "(Security page)", Name = "Security: remove certificate " + f.Fix.D.Str("label"), Items = new List<PlanItem> { f.Fix } };
+            if (!Admin.Require(FindForm(), "Security", "Changing this")) return;
+            bool cert = f.Fix.Type == "cert";
+            string what = cert ? "Remove \"" + f.Fix.D.Str("label") + "\" from " + f.Fix.D.Str("location") + "\\Root?" : f.Fix.Describe() + "?";
+            if (MessageBox.Show(FindForm(), what + "\n\nThe current setting is saved first; you can put it back on the Backups / Undo page.",
+                    "Featherweight", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) != DialogResult.OK) return;
+            var plan = new Plan { File = "(Security page)", Name = "Security: " + (cert ? "remove certificate " + f.Fix.D.Str("label") : f.Title), Items = new List<PlanItem> { f.Fix } };
             var lines = new List<string>();
             await Task.Run(() => Engine.Apply(plan, plan.Items, false, lines.Add));
             MessageBox.Show(FindForm(), string.Join("\n", lines), "Featherweight");
+            await Scan();
+        }
+
+        async Task Open()
+        {
+            var f = Selected; if (f == null || f.OpenTarget == null) return;
+            if (f.OpenTarget != SecurityScan.QuickScanTarget)
+            {
+                try { System.Diagnostics.Process.Start(f.OpenTarget); }
+                catch { MessageBox.Show(FindForm(), "Windows couldn't open that page on this PC. You'll find it in Settings or Windows Security.", "Featherweight"); }
+                return;
+            }
+            // Defender quick scan: Defender's own scanner, run in the background
+            open.Enabled = scan.Enabled = false; status.Text = "Microsoft Defender is scanning… (usually a few minutes)";
+            string result = await Task.Run(() => SecurityScan.RunQuickScan());
+            open.Enabled = scan.Enabled = true; status.Text = result;
+            try { File.AppendAllText(Path.Combine(Paths.Logs, "activity.log"), DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss  ") + "Defender quick scan: " + result + Environment.NewLine); } catch { }
+            MessageBox.Show(FindForm(), result, "Microsoft Defender", MessageBoxButtons.OK, result.Contains("no threats") ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
             await Scan();
         }
     }

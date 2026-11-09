@@ -56,6 +56,13 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
   describe items, never mark them Recommended).
 - Settings & about says when Windows' System Protection is off (so no restore points can be made) and opens its settings.
 
+- Security check, much more thorough: firewall per network type (or another firewall), SmartScreen, User Account
+  Control, Secure Boot, TPM and drive encryption (as administrator), Core isolation, Windows Update (last install,
+  switched off, restart pending), Remote Desktop, SMB1, automatic sign-in with a stored password, services running
+  from user folders, browser extensions (Chrome, Edge, Brave, Vivaldi, Firefox) and when Defender last scanned, with
+  a "Run a quick scan now" button that uses Defender itself. A summary at the top says what needs attention; levels
+  read Act now / Look at / Note / OK. "Open in Windows" goes to the exact Settings or Windows Security page, and
+  startup entries or tasks running from user folders can be switched off (backed up, undoable).
 - Optimize: **Copy for a report** copies just the selected app's names, facts and changes (personal details removed)
   and offers to open the "Describe an app" request form.
 

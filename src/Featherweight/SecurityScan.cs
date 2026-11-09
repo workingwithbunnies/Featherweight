@@ -16,10 +16,12 @@ namespace Featherweight
     {
         public Severity Severity; public string Area, Title, Detail;
         public PlanItem Fix; // optional one-click fix (applied through the plan engine, so it is backed up)
+        public string FixLabel;                 // button text for Fix, e.g. "Switch off this startup entry (backed up)"
+        public string OpenLabel, OpenTarget;    // "Open in Windows" button: a Settings / Windows Security page, or an action Featherweight runs
     }
 
     // Read-only checks that mirror the manual sweep: Defender, signatures, persistence, certificates, network.
-    static class SecurityScan
+    static partial class SecurityScan
     {
         static readonly Regex UserWritable = new Regex(@"\\AppData\\|\\Temp\\|\\Downloads\\|\\Users\\Public\\", RegexOptions.IgnoreCase);
 
@@ -27,12 +29,18 @@ namespace Featherweight
         {
             var f = new List<Finding>();
             Step(f, progress, "Microsoft Defender", Defender);
+            Step(f, progress, "Defender scans", DefenderScans);
             Step(f, progress, "Running programs", Programs);
             Step(f, progress, "Root certificates", RootCerts);
             Step(f, progress, "Autostart entries", Autostart);
             Step(f, progress, "Scheduled tasks", Tasks);
             Step(f, progress, "Hijack points", HijackPoints);
             Step(f, progress, "Network", Network);
+            Step(f, progress, "Windows protection", WindowsProtection);
+            Step(f, progress, "Windows Update", WindowsUpdate);
+            Step(f, progress, "Sign-in and sharing", SignInAndSharing);
+            Step(f, progress, "Services", ServicesFromUserFolders);
+            Step(f, progress, "Browser extensions", BrowserExtensions);
             return f.OrderByDescending(x => x.Severity).ThenBy(x => x.Area).ToList();
         }
 
@@ -208,7 +216,7 @@ namespace Featherweight
                         { "type", "cert" }, { "location", loc.ToString() }, { "store", "Root" }, { "thumbprint", c.Thumbprint }, { "label", cn },
                         { "why", "Removed from the Security page" } } };
                     if (string.Equals(cn, Environment.MachineName, StringComparison.OrdinalIgnoreCase) && !codeSigning)
-                        Add(f, Severity.Info, A, "Self-signed certificate for this PC (" + cn + ")" + where, detail + "\r\n\r\nCreated by Windows or a local app for HTTPS on this machine. Usually harmless.", fix);
+                        Add(f, Severity.Info, A, "Self-signed certificate for this PC" + where, detail + "\r\n\r\nCreated by Windows or a local app for HTTPS on this machine. Usually harmless.", fix);
                     else if (codeSigning)
                         Add(f, Severity.Warning, A, "Custom root trusted for code signing: " + cn + where,
                             detail + "\r\n\r\nAnything signed with this certificate's key looks like a trusted publisher on this PC. Remove it unless you know which app needs it.", fix);
@@ -225,24 +233,41 @@ namespace Featherweight
         {
             const string A = "Autostart";
             var entries = new List<string>();
+            // (hive, key, the Task Manager switch for it: StartupApproved\Run or \Run32, or null when there's none)
             var keys = new[] {
-                Tuple.Create(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Run"),
-                Tuple.Create(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
-                Tuple.Create(Registry.LocalMachine, @"Software\Microsoft\Windows\CurrentVersion\Run"),
-                Tuple.Create(Registry.LocalMachine, @"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
-                Tuple.Create(Registry.LocalMachine, @"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run"),
-                Tuple.Create(Registry.LocalMachine, @"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run"),
-                Tuple.Create(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run") };
+                Tuple.Create("HKCU", @"Software\Microsoft\Windows\CurrentVersion\Run", "Run"),
+                Tuple.Create("HKCU", @"Software\Microsoft\Windows\CurrentVersion\RunOnce", (string)null),
+                Tuple.Create("HKLM", @"Software\Microsoft\Windows\CurrentVersion\Run", "Run"),
+                Tuple.Create("HKLM", @"Software\Microsoft\Windows\CurrentVersion\RunOnce", (string)null),
+                Tuple.Create("HKLM", @"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run", "Run32"),
+                Tuple.Create("HKLM", @"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run", (string)null),
+                Tuple.Create("HKCU", @"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run", (string)null) };
             foreach (var k in keys)
-                using (var key = k.Item1.OpenSubKey(k.Item2))
+                using (var key = k.Item1 == "HKCU" ? Engine.OpenUserKey(k.Item2) : Registry.LocalMachine.OpenSubKey(k.Item2)) // the signed-in user's, even when elevated
                 {
                     if (key == null) continue;
                     foreach (var n in key.GetValueNames())
                     {
                         string cmd = Convert.ToString(key.GetValue(n));
-                        string line = (k.Item1 == Registry.CurrentUser ? "HKCU" : "HKLM") + "\\…\\" + Path.GetFileName(k.Item2) + "  " + n + " = " + cmd;
-                        if (UserWritable.IsMatch(cmd)) Add(f, Severity.Warning, A, "Startup entry runs from a user folder: " + n, line);
+                        string line = k.Item1 + "\\…\\" + Path.GetFileName(k.Item2) + "  " + n + " = " + cmd;
                         entries.Add(line);
+                        if (!UserWritable.IsMatch(cmd)) continue;
+                        PlanItem fix = null; bool alreadyOff = false;
+                        if (k.Item3 != null)
+                        {
+                            // Switch it off the way Task Manager does (backed up, undoable), unless it already is.
+                            string approved = k.Item1 + @":\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\" + k.Item3;
+                            var st = Engine.RegState(approved, n);
+                            var bytes = (bool)st["Exists"] ? st["Value"] as List<int> : null;
+                            alreadyOff = bytes != null && bytes.Count > 0 && bytes[0] % 2 == 1;
+                            fix = new PlanItem { D = new Dictionary<string, object> { { "type", "registry" }, { "path", approved }, { "name", n }, { "kind", "Binary" },
+                                { "value", new List<object> { 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } }, { "label", "Startup entry '" + n + "' → off (same as Task Manager)" } } };
+                        }
+                        if (alreadyOff) { Add(f, Severity.Info, A, "Startup entry from a user folder (switched off): " + n, line); continue; }
+                        f.Add(new Finding { Severity = Severity.Warning, Area = A, Title = "Startup entry runs from a user folder: " + n,
+                            Detail = line + "\r\n\r\nNormal software starts from Program Files. Something starting from a user, temp or downloads folder is " +
+                                     "worth a look. If you don't recognise it, switch it off (backed up) and run a Defender scan.",
+                            Fix = fix, FixLabel = fix != null ? "Switch it off (backed up)" : null });
                     }
                 }
             foreach (var dir in new[] { Environment.GetFolderPath(Environment.SpecialFolder.Startup), Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup) })
@@ -274,7 +299,14 @@ namespace Featherweight
                 string cmd = string.Join(" | ", exe);
                 string line = (string)t.Path + "  [" + ((bool)t.Enabled ? "enabled" : "disabled") + "]  " + cmd;
                 lines.Add(line);
-                if ((bool)t.Enabled && UserWritable.IsMatch(cmd)) Add(f, Severity.Warning, "Tasks", "Scheduled task runs from a user folder: " + (string)t.Name, line);
+                if ((bool)t.Enabled && UserWritable.IsMatch(cmd))
+                {
+                    string dir = fp == "\\" ? "\\" : fp + "\\";
+                    f.Add(new Finding { Severity = Severity.Warning, Area = "Tasks", Title = "Scheduled task runs from a user folder: " + (string)t.Name,
+                        Detail = line + "\r\n\r\nNormal software runs from Program Files. If you don't recognise this task, switch it off (backed up) and run a Defender scan.",
+                        Fix = new PlanItem { D = new Dictionary<string, object> { { "type", "task" }, { "path", dir }, { "name", (string)t.Name } } },
+                        FixLabel = "Switch it off (backed up)" });
+                }
             }
             foreach (dynamic sub in folder.GetFolders(0)) Walk(sub, lines, f);
         }

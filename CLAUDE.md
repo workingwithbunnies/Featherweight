@@ -31,7 +31,8 @@ improvements proactively. Be fully transparent about limitations and anything un
 | `Settings.cs` | `settings.json` and System Restore point creation |
 | `Housekeeping.cs` | Tidies the data folder on start (old unnamed snapshots, long-undone backups, long logs) |
 | `Updates.cs`, `Diagnostics.cs` | GitHub release check; diagnostics export, `Privacy.Redact`, crash handling |
-| `Native.cs`, `Memory.cs`, `Cleaner.cs`, `SecurityScan.cs`, `Json.cs`, `Ui.cs` | Win32 calls, memory figures, RAM cleaner, security sweep, JSON, theme/controls |
+| `SecurityScan.cs`, `SecurityChecks.cs` | Security check (read-only): Defender, certificates, startup, tasks, hijack points, network; Windows protections, updates, sign-in/sharing, browser extensions. Fixes go through the engine; Windows security settings only get an "Open in Windows" link |
+| `Native.cs`, `Memory.cs`, `Cleaner.cs`, `Json.cs`, `Ui.cs` | Win32 calls, memory figures, RAM cleaner, security sweep, JSON, theme/controls |
 
 Catalog format and contribution rules: `docs/CATALOG.md`. Roadmap: `docs/ROADMAP.md`.
 
