@@ -29,8 +29,10 @@ namespace Featherweight
         static string LocalPath { get { return Path.Combine(Paths.Root, "knowledge.json"); } }
 
         static List<KnowledgeEntry> entries;
-        public static int Version { get; private set; }
-        public static string Origin { get; private set; } // "built in" or "downloaded"
+        static int version; static string origin;
+        // Reading either one loads the entries first, so they're never asked for before they're known.
+        public static int Version { get { var _ = Entries; return version; } private set { version = value; } }
+        public static string Origin { get { var _ = Entries; return origin; } private set { origin = value; } } // "built in" or "downloaded"
 
         public static List<KnowledgeEntry> Entries
         {

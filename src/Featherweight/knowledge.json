@@ -1,6 +1,6 @@
 {
-  "version": 2,
-  "updated": "2026-11-06",
+  "version": 3,
+  "updated": "2026-11-09",
   "about": "Featherweight's own descriptions of background software, matched to what the Optimize page finds. Written and checked by the project; see docs/KNOWLEDGE.md. Every sentence must be true on any PC; say how sure we are in 'confidence'.",
   "entries": [
     {
@@ -299,6 +299,85 @@
       "confidence": "how Process Lasso works",
       "reviewed": "2026-11-06",
       "sources": []
+    },
+    {
+      "id": "amd-crash-defender",
+      "match": { "exe": "amdfendrsr.exe" },
+      "title": "AMD Crash Defender",
+      "about": "An AMD service installed with AMD's driver package. Third-party sources describe it as watching for graphics driver crashes and instability; AMD doesn't publicly document it in detail.",
+      "lose": "Not documented by AMD; one guide warns it may make crashes more likely. Featherweight lists driver helpers for information only.",
+      "suggest": "keep",
+      "confidence": "low: third-party guides only; AMD doesn't document it",
+      "reviewed": "2026-11-09",
+      "sources": [ "https://www.file.net/process/amdfendrsr.exe.html", "https://malwaretips.com/blogs/amd-crash-defender-service-process/" ]
+    },
+    {
+      "id": "amd-external-events",
+      "match": { "exe": "atiesrxx.exe" },
+      "title": "AMD External Events Utility",
+      "about": "Part of AMD's graphics driver (once called ATI Hotkey Poller). It handles events for AMD graphics such as display hotkeys. Sources also link it to FreeSync working in some games and to laptops turning the screen off properly when the lid closes.",
+      "lose": "Possibly AMD display hotkeys, FreeSync in some games, or how the screen behaves when the lid closes. Featherweight lists driver helpers for information only.",
+      "suggest": "keep",
+      "confidence": "based on third-party guides and older forum reports; AMD doesn't document it",
+      "reviewed": "2026-11-09",
+      "sources": [ "https://www.ghacks.net/?p=22112", "https://malwaretips.com/blogs/atiesrxx-exe-what-it-is-should-i-remove-it/" ]
+    },
+    {
+      "id": "amd-provisioning-packages",
+      "match": { "exe": "AmdPpkgSvc.exe" },
+      "title": "AMD Provisioning Packages",
+      "about": "Part of AMD's chipset driver. Its own description says it manages AMD provisioning packages, including processor and NVMe power management. AMD uses these packages to deliver its Ryzen power settings (how the processor boosts and parks cores).",
+      "lose": "Possibly AMD's processor power tuning. Featherweight lists driver helpers for information only.",
+      "suggest": "keep",
+      "confidence": "based on the program's own description and AMD chipset release notes",
+      "reviewed": "2026-11-09",
+      "sources": [ "https://www.neowin.net/amp/amd-makes-cpu-changing-easy-as-you-wont-need-to-reinstall-windows-1110-any-more/" ]
+    },
+    {
+      "id": "elan-service",
+      "match": { "exe": "ETDService.exe" },
+      "title": "ELAN touchpad service",
+      "about": "Part of the ELAN touchpad driver, starting with Windows. ELAN's separate ETD Control Center handles multi-finger gestures; what this service does on its own isn't publicly documented.",
+      "lose": "Not documented. Users report mixed results when it's switched off, including erratic touchpad behaviour. Featherweight lists driver helpers for information only.",
+      "suggest": "keep",
+      "confidence": "low: HP community reports only",
+      "reviewed": "2026-11-09",
+      "sources": [ "https://h30434.www3.hp.com/t5/Gaming-Archive-Read-Only/HP-Omen-17-Touchpad-issue/m-p/8339692" ]
+    },
+    {
+      "id": "realtek-audio-service",
+      "match": { "exe": "RtkAudUService64.exe" },
+      "title": "Realtek audio service",
+      "about": "The background part of the Realtek audio driver. It connects the driver with the Realtek Audio Console app and handles audio events such as plugging in headphones (jack detection), microphone and speaker settings, and sound enhancements.",
+      "lose": "Realtek Audio Console settings, headphone-jack pop-ups or sound enhancements may stop working. Featherweight lists driver helpers for information only.",
+      "suggest": "keep",
+      "confidence": "based on third-party guides; Realtek doesn't document it",
+      "reviewed": "2026-11-09",
+      "sources": [ "https://blog.gridinsoft.com/rtkauduservice64-exe/", "https://windowsreport.com/rtkauduservice64-exe/" ]
+    },
+    {
+      "id": "nvidia-display-container",
+      "match": { "exe": "NVDisplay.Container.exe" },
+      "title": "NVIDIA Display Container",
+      "about": "Part of the NVIDIA graphics driver (\"Container service for NVIDIA root features\"). The NVIDIA Control Panel and NVIDIA's tray icon need it; users report the Control Panel won't open while it's off.",
+      "lose": "The NVIDIA Control Panel and NVIDIA's tray icon, until it's running again. Featherweight lists driver helpers for information only.",
+      "keepIf": "you use the NVIDIA Control Panel.",
+      "suggest": "keep",
+      "confidence": "based on forum reports and third-party guides; NVIDIA doesn't document it",
+      "reviewed": "2026-11-09",
+      "sources": [ "https://www.thewindowsclub.com/nvidia-system-tray-icon-missing-in-windows", "https://www.wintips.org/?p=61818" ]
+    },
+    {
+      "id": "nvidia-localsystem-container",
+      "match": { "service": "NvContainerLocalSystem" },
+      "title": "NVIDIA app background service",
+      "about": "NVIDIA's container service for the NVIDIA app (and the older GeForce Experience). It hosts background features such as the in-game overlay, recording and instant replay, game optimization and driver update checks. The graphics driver itself runs separately (NVIDIA Display Container).",
+      "lose": "The NVIDIA overlay, recording, instant replay and the NVIDIA app's driver update checks may stop until it's running again.",
+      "keepIf": "you use NVIDIA's overlay, recording or instant replay.",
+      "suggest": "optional",
+      "confidence": "based on third-party guides and forum reports; NVIDIA doesn't document it",
+      "reviewed": "2026-11-09",
+      "sources": [ "https://malwaretips.com/blogs/nvidia-localsystem-container-process-explained/", "https://www.file.net/process/nvcontainer.exe.html" ]
     }
   ]
 }

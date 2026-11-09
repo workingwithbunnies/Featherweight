@@ -243,12 +243,13 @@ namespace Featherweight
             // Found items: a short summary here; the full facts go in the scrolling box so the buttons stay in view.
             dDesc.Text = x.Discovered && x.Summary != null ? x.Summary : x.Description;
             dVerdict.Text = "Suggested: " + VerdictText(x);
-            dVerdict.ForeColor = VerdictColor(x.Verdict);
+            dVerdict.ForeColor = x.ViewOnly ? Theme.Muted : VerdictColor(x.Verdict);
             dNote.Text = x.VerdictNote != null && x.Knowledge == null ? "On this PC: " + x.VerdictNote : "";
             dMemory.Text = x.RunningCount > 0
                 ? "Memory: using " + Theme.MB(x.LiveMB) + " right now (" + x.RunningCount + (x.RunningCount == 1 ? " process)" : " processes)")
                 : x.EstimateMB >= 1 ? "Memory: about " + Theme.MB(x.EstimateMB) + " when it runs" : "Memory: negligible";
-            dRisk.Text = x.ViewOnly ? "Listed for information only: Featherweight doesn't change driver helpers it hasn't reviewed"
+            dRisk.Text = x.ViewOnly && x.Knowledge != null ? "Reviewed (" + (x.Knowledge.Confidence ?? "see description") + ")  ·  listed for information only"
+                       : x.ViewOnly ? "Listed for information only: Featherweight doesn't change driver helpers it hasn't reviewed"
                        : x.Discovered && x.Knowledge == null ? "Risk: unknown, not reviewed yet  ·  backed up, undo any time"
                        : x.Discovered ? "Reviewed (" + (x.Knowledge.Confidence ?? "see description") + ")  ·  backed up, undo any time"
                                       : "Risk: " + x.Risk + (x.IsManual ? "  ·  a setting in another app" : "  ·  backed up, undo any time");

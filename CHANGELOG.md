@@ -69,6 +69,9 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
   what changed and which program grew or shrank most, a new "By program" section lists every program that changed
   by 5 MB or more (started / closed included), companies with nothing running are hidden, a Swap button was added,
   and snapshots with the same name no longer overwrite each other.
+- Seven more reviewed descriptions (knowledge base version 3): AMD Crash Defender, AMD External Events Utility, AMD
+  Provisioning Packages, the ELAN touchpad service, the Realtek audio service, NVIDIA Display Container and the NVIDIA
+  app background service. Driver helpers stay information-only.
 - Optimize: hover text is short (the full details stay in the side panel), and info-only items no longer show
   "Running" in orange.
 - Task descriptions no longer show the Windows account ID, and odd characters in program details are cleaned up.
