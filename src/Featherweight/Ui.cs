@@ -24,6 +24,7 @@ namespace Featherweight
         public static float Dpi = ReadDpi();
         static float ReadDpi() { try { using (var g = Graphics.FromHwnd(IntPtr.Zero)) return Math.Max(1f, g.DpiX / 96f); } catch { return 1f; } }
         public static int S(int px) { return (int)Math.Round(px * Dpi); }
+        public static Padding Pad(int l, int t, int r, int b) { return new Padding(S(l), S(t), S(r), S(b)); }
 
         public static readonly Font Base = new Font("Segoe UI", 9.75f);
         public static readonly Font Small = new Font("Segoe UI", 8.75f);

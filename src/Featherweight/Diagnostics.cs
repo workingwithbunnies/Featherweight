@@ -250,32 +250,32 @@ namespace Featherweight
 
         public DiagnosticsDialog()
         {
-            AutoScaleDimensions = new SizeF(96F, 96F); AutoScaleMode = AutoScaleMode.Dpi;
+            AutoScaleMode = AutoScaleMode.None; // sizes go through Theme.S, like the main window
             Text = "Export diagnostics"; Font = Theme.Base; BackColor = Theme.Card;
             FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = MinimizeBox = false; ShowInTaskbar = false; StartPosition = FormStartPosition.CenterParent;
             AutoSize = true; AutoSizeMode = AutoSizeMode.GrowAndShrink;
             // Form.Padding only moves docked controls, so the margins live on the panel itself.
-            var stack = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, BackColor = Theme.Card, Padding = new Padding(24, 20, 24, 20) };
-            var title = Theme.Label("What should the report include?", Theme.H2); title.Margin = new Padding(0, 0, 0, 2);
+            var stack = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, BackColor = Theme.Card, Padding = Theme.Pad(24, 20, 24, 20) };
+            var title = Theme.Label("What should the report include?", Theme.H2); title.Margin = Theme.Pad(0, 0, 0, 2);
             stack.Controls.Add(title);
             stack.Controls.Add(Note("Tick only what your report needs. You can check the file before sharing it.", Theme.Muted, 0));
             var always = Box("App and Windows version", "Always included: which Featherweight and which Windows the report comes from.", true);
-            always.Enabled = false; always.Margin = new Padding(0, 14, 0, 0);
+            always.Enabled = false; always.Margin = Theme.Pad(0, 14, 0, 0);
             foreach (var c in new[] { always, pc, software, memory, activity }) { stack.Controls.Add(c); stack.Controls.Add(Note((string)c.Tag, Theme.Muted)); }
 
             // The public-sharing warning as a soft callout instead of a block of orange text.
-            var callout = new Panel { BackColor = Theme.Banner, Padding = new Padding(12, 10, 12, 10), Margin = new Padding(0, 16, 0, 0), Width = Wide, AutoSize = true, MinimumSize = new Size(Wide, 0) };
+            var callout = new Panel { BackColor = Theme.Banner, Padding = Theme.Pad(12, 10, 12, 10), Margin = Theme.Pad(0, 16, 0, 0), Width = Wide, AutoSize = true, MinimumSize = new Size(Wide, 0) };
             var calloutText = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, BackColor = Theme.Banner, Dock = DockStyle.Top };
-            var ct = Theme.Label("GitHub issues are public", Theme.Bold); ct.Margin = new Padding(0, 0, 0, 2); ct.BackColor = Theme.Banner;
+            var ct = Theme.Label("GitHub issues are public", Theme.Bold); ct.Margin = Theme.Pad(0, 0, 0, 2); ct.BackColor = Theme.Banner;
             var cb = Theme.Label("Anyone can read what you attach. Featherweight removes your user name, PC name, account IDs and email addresses, " +
                                  "and opens the file so you can check it first.", Theme.Small);
-            cb.MaximumSize = new Size(Wide - 24, 0); cb.Margin = new Padding(0); cb.BackColor = Theme.Banner;
+            cb.MaximumSize = new Size(Wide - Theme.S(24), 0); cb.Margin = new Padding(0); cb.BackColor = Theme.Banner;
             calloutText.Controls.Add(ct); calloutText.Controls.Add(cb);
             callout.Controls.Add(calloutText);
             stack.Controls.Add(callout);
 
             // Buttons on the right, as in Windows' own dialogs.
-            var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, BackColor = Theme.Card, Margin = new Padding(0, 18, 0, 0), Anchor = AnchorStyles.Right };
+            var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, BackColor = Theme.Card, Margin = Theme.Pad(0, 18, 0, 0), Anchor = AnchorStyles.Right };
             var ok = Theme.Button("Create report", true); ok.DialogResult = DialogResult.OK;
             var cancel = Theme.Button("Cancel"); cancel.DialogResult = DialogResult.Cancel; cancel.Margin = new Padding(0);
             row.Controls.Add(ok); row.Controls.Add(cancel);
@@ -284,16 +284,17 @@ namespace Featherweight
             Controls.Add(stack);
         }
 
-        const int Wide = 520;    // width of the text column
-        const int Indent = 18;   // lines a description up with its checkbox's text
+        static readonly int Wide = Theme.S(520);   // width of the text column
+        static readonly int Indent = Theme.S(18);  // lines a description up with its checkbox's text
 
         static CheckBox Box(string text, string note, bool on)
         {
-            return new CheckBox { Text = text, Checked = on, AutoSize = true, Font = Theme.Bold, Margin = new Padding(0, 10, 0, 0), Tag = note, BackColor = Theme.Card, UseMnemonic = false };
+            return new CheckBox { Text = text, Checked = on, AutoSize = true, Font = Theme.Bold, Margin = Theme.Pad(0, 10, 0, 0), Tag = note, BackColor = Theme.Card, UseMnemonic = false };
         }
 
-        static Label Note(string text, Color color, int indent = Indent)
+        static Label Note(string text, Color color, int indent = -1)
         {
+            if (indent < 0) indent = Indent;
             var l = Theme.Label(text, Theme.Small, color); l.MaximumSize = new Size(Wide - indent, 0); l.Margin = new Padding(indent, 0, 0, 0); l.BackColor = Theme.Card; return l;
         }
     }

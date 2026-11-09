@@ -82,6 +82,9 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
   grey text.
 - Export diagnostics: the dialog has even margins, each description lines up with its checkbox, the public-sharing
   warning is a soft yellow box instead of orange text, and the buttons sit on the right like in Windows' own dialogs.
+- Welcome screen and Export diagnostics at 150 % and above: they now grow with the display scale instead of keeping
+  their 100 % size with bigger text (which overlapped the header text, cut off "What it never does" and ran under the
+  taskbar). The welcome screen also gets wider if it would be taller than the screen, and scrolls as a last resort.
 - At display scales above 100 % (125 %, 150 %…) the sidebar, list columns and the Optimize details panel grow with the
   text, so the app name and words like "Recommended" or "Not optimized" are no longer cut off. Dashboard cards no
   longer show stray border lines after the window is resized.
