@@ -33,7 +33,6 @@ namespace Featherweight
             pages["Dashboard"] = new DashboardPage();
             pages["Optimize"] = new OptimizePage();
             pages["Backups"] = new BackupsPage();
-            pages["Clean"] = new CleanPage();
             pages["Snapshots"] = new SnapshotsPage();
             pages["Security"] = new SecurityPage();
             pages["Settings"] = new SettingsPage();
@@ -48,7 +47,7 @@ namespace Featherweight
             };
             sidebar.Controls.Add(footer);
             var labels = new[] {
-                Tuple.Create("Dashboard", "Dashboard"), Tuple.Create("Clean", "Clean RAM"), Tuple.Create("Optimize", "Optimize"),
+                Tuple.Create("Dashboard", "Dashboard"), Tuple.Create("Optimize", "Optimize"),
                 Tuple.Create("Backups", "Backups / Undo"), Tuple.Create("Snapshots", "Snapshots"), Tuple.Create("Security", "Security check"),
                 Tuple.Create("Settings", "Settings & about") };
             foreach (var t in labels.Reverse()) sidebar.Controls.Add(NavButton(t.Item1, t.Item2));

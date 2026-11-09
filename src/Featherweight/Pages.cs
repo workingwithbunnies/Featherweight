@@ -56,18 +56,29 @@ namespace Featherweight
         readonly Graph graph = new Graph();
         readonly ListView groups, top;
         readonly Label status = Theme.Label("", Theme.Small, Theme.Muted);
-        readonly Button cleanBtn = Theme.Button("Free up RAM", true);
+        readonly Button cleanBtn = Theme.Button("Free up RAM", true), moreBtn = Theme.Button("▾", true);
         readonly Timer timer = new Timer { Interval = 1000 };
+        readonly HashSet<string> expanded = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // companies opened in the list
         int tick;
 
         public DashboardPage()
         {
-            groups = Theme.List("App / vendor", -1, "Procs", 60, "Private", 90, "Working set", 100);
+            groups = Theme.List("Company (click to see its programs)", -1, "Procs", 60, "Private", 90, "Working set", 100);
             top = Theme.List("Process", -1, "PID", 70, "Private", 90, "Working set", 100);
             Ui.RightAlign(groups, 1, 2, 3); Ui.RightAlign(top, 1, 2, 3);
+            groups.ShowItemToolTips = true;
+            // Click a company to open or close it.
+            groups.MouseClick += (s, e) =>
+            {
+                var hit = groups.HitTest(e.Location).Item;
+                var name = hit == null ? null : hit.Tag as string;
+                if (name == null) return;
+                if (!expanded.Remove(name)) expanded.Add(name);
+                RefreshLists();
+            };
 
             var split = new SplitContainer { Dock = DockStyle.Fill, SplitterWidth = 16, BackColor = Theme.Bg };
-            split.Panel1.Controls.Add(Ui.Section("By app / vendor", groups));
+            split.Panel1.Controls.Add(Ui.Section("By company", groups));
             split.Panel2.Controls.Add(Ui.Section("Top processes", top));
             split.SizeChanged += (s, e) => { if (split.Width > 200) split.SplitterDistance = split.Width / 2 - 8; };
 
@@ -76,9 +87,20 @@ namespace Featherweight
             cards.Controls.Add(inUse, 0, 0); cards.Controls.Add(avail, 1, 0); cards.Controls.Add(commit, 2, 0); cards.Controls.Add(kernel, 3, 0);
             kernel.Margin = new Padding(0, 0, 0, 12);
 
+            // "Free up RAM" (quick clean) with a small menu for the deep clean; the result shows underneath.
+            var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, BackColor = Theme.Bg, Margin = Padding.Empty, Anchor = AnchorStyles.Right };
+            cleanBtn.Margin = new Padding(0); moreBtn.Margin = new Padding(1, 0, 0, 0); moreBtn.Padding = new Padding(6, 4, 6, 4);
+            buttons.Controls.Add(cleanBtn); buttons.Controls.Add(moreBtn);
+            var menu = new ContextMenuStrip { Font = Theme.Base, ShowImageMargin = false };
+            menu.Items.Add("Quick clean (recommended)", null, async (s, e) => await Clean(false));
+            menu.Items.Add("Deep clean: also empty the file cache", null, async (s, e) => await Clean(true));
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("What's the difference?", null, (s, e) => MessageBox.Show(FindForm(), CleanHelp, "Free up RAM", MessageBoxButtons.OK, MessageBoxIcon.Information));
+            moreBtn.Click += (s, e) => menu.Show(moreBtn, new Point(moreBtn.Width - menu.PreferredSize.Width, moreBtn.Height));
+            cleanBtn.Click += async (s, e) => await Clean(false);
+            status.TextAlign = ContentAlignment.TopRight; status.Anchor = AnchorStyles.Right;
             var right = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, BackColor = Theme.Bg };
-            right.Controls.Add(cleanBtn); right.Controls.Add(status);
-            cleanBtn.Click += async (s, e) => await Clean();
+            right.Controls.Add(buttons); right.Controls.Add(status);
 
             Controls.Add(split);
             Controls.Add(Ui.Spacer(14));
@@ -107,86 +129,53 @@ namespace Featherweight
         void RefreshLists()
         {
             var procs = ProcScan.Processes();
+            // Remember what was at the top of the list, so the view doesn't jump while it refreshes.
+            string topKey = groups.TopItem != null ? groups.TopItem.Name : null;
             groups.BeginUpdate(); groups.Items.Clear();
             // Only companies with something running: the fixed groups (Claude, Dell…) used to show as grey 0 MB rows on every PC.
             foreach (var g in ProcScan.Group(procs).Where(g => g.Count > 0).OrderByDescending(g => g.PrivMB))
-                groups.Items.Add(new ListViewItem(new[] { g.Group, g.Count.ToString(), Theme.MB(g.PrivMB), Theme.MB(g.WSMB) }) { ToolTipText = g.Names });
+            {
+                bool open = expanded.Contains(g.Group);
+                var it = new ListViewItem(new[] { (open ? "▾  " : "▸  ") + g.Group, g.Count.ToString(), Theme.MB(g.PrivMB), Theme.MB(g.WSMB) })
+                { Name = "g|" + g.Group, Tag = g.Group, ToolTipText = open ? "Click to close" : "Click to see its programs" };
+                groups.Items.Add(it);
+                if (!open) continue;
+                // its programs: every copy of a program added up, biggest first
+                foreach (var p in g.Members.GroupBy(m => m.Name, StringComparer.OrdinalIgnoreCase).OrderByDescending(x => x.Sum(m => m.PrivMB)))
+                {
+                    int n = p.Count();
+                    groups.Items.Add(new ListViewItem(new[] { "        " + p.Key + (n > 1 ? "  ×" + n : ""), n.ToString(), Theme.MB(p.Sum(m => m.PrivMB)), Theme.MB(p.Sum(m => m.WSMB)) })
+                    { Name = "p|" + g.Group + "|" + p.Key, ForeColor = Theme.Muted, ToolTipText = n > 1 ? n + " copies of " + p.Key + " are running" : p.Key });
+                }
+            }
             groups.EndUpdate(); Theme.FillColumn(groups);
+            if (topKey != null) { var t = groups.Items[topKey]; if (t != null) try { groups.TopItem = t; } catch { } }
             top.BeginUpdate(); top.Items.Clear();
             foreach (var p in procs.OrderByDescending(p => p.PrivMB).Take(30))
                 top.Items.Add(new ListViewItem(new[] { p.Name, p.Id.ToString(), Theme.MB(p.PrivMB), Theme.MB(p.WSMB) }));
             top.EndUpdate(); Theme.FillColumn(top);
         }
 
-        async Task Clean()
+        const string CleanHelp =
+            "Quick clean trims idle memory out of every program and writes pending changes to disk, so \"in use\" drops right away. " +
+            "Programs pull back what they need over time.\n\n" +
+            "Deep clean also empties Windows' file cache. The free-memory number jumps, but apps and games load from disk once more " +
+            "until the cache refills. Windows already hands cache back instantly when something needs it, so use it right before " +
+            "launching something heavy, not on a timer.\n\nBoth need administrator rights. The lasting win is fewer background apps (Optimize).";
+
+        async Task Clean(bool deep)
         {
             if (!Admin.Require(FindForm(), "Dashboard", "Cleaning RAM")) return;
-            cleanBtn.Enabled = false; status.Text = "Cleaning…";
-            var r = await Task.Run(() => Cleaner.Run(false));
+            cleanBtn.Enabled = moreBtn.Enabled = false; status.Text = deep ? "Deep cleaning…" : "Cleaning…";
+            var r = await Task.Run(() => Cleaner.Run(deep));
             double total = SysMem.Read().TotalMB;
-            status.Text = "Freed " + Theme.MB(Math.Max(0, r.Freed)) + " · in use " + (100 * r.UsedBefore / total).ToString("0") + "% → " + (100 * r.UsedAfter / total).ToString("0") + "%";
-            cleanBtn.Enabled = true;
+            string line = (deep ? "Deep clean" : "Quick clean") + ": freed " + Theme.MB(Math.Max(0, r.Freed)) + " · in use " +
+                          (100 * r.UsedBefore / total).ToString("0") + "% → " + (100 * r.UsedAfter / total).ToString("0") + "%";
+            if (deep && !double.IsNaN(r.StandbyBefore)) line += "\nFile cache " + Theme.MB(r.StandbyBefore) + " → " + Theme.MB(r.StandbyAfter) + " (it refills as you use the PC)";
+            status.Text = line;
+            try { File.AppendAllText(Path.Combine(Paths.Logs, "activity.log"), DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss  ") + line.Replace("\n", " · ") + Environment.NewLine); } catch { }
+            cleanBtn.Enabled = moreBtn.Enabled = true;
             RefreshLists();
-        }
-    }
-
-    // ===================================================================== Clean RAM
-    class CleanPage : Page
-    {
-        readonly Button run = Theme.Button("Free up RAM now", true);
-        readonly CheckBox deep = new CheckBox { Text = "Deep clean: also clear the standby cache (file cache)", AutoSize = true, Margin = new Padding(0, 10, 0, 0) };
-        readonly Label freed = Theme.Label("", Theme.Big, Theme.Ok);
-        readonly ListView result = Theme.List("Memory", -1, "Before", 120, "After", 120, "Change", 120);
-        readonly TextBox log = Theme.LogBox();
-
-        public CleanPage()
-        {
-            run.Font = new Font("Segoe UI Semibold", 13f); run.Padding = new Padding(22, 10, 22, 10);
-            run.Click += async (s, e) => await Go();
-            Ui.RightAlign(result, 1, 2, 3);
-            log.Height = 110;
-
-            var top = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, BackColor = Theme.Bg, Padding = new Padding(0, 4, 0, 12) };
-            top.Controls.Add(run); top.Controls.Add(deep);
-            var note = Theme.Label(
-                "Quick clean trims idle memory out of every program and writes pending changes to disk, so \"in use\" drops right away. " +
-                "Deep clean also empties Windows' file cache: the free-memory number jumps, but apps and games load from disk once more " +
-                "until the cache refills. Windows already hands cache back instantly when something needs it, so use this before " +
-                "launching something heavy, not on a timer.", Theme.Small, Theme.Muted);
-            note.MaximumSize = new Size(820, 0);
-            top.Controls.Add(note);
-            top.Controls.Add(freed);
-
-            Controls.Add(result);
-            Controls.Add(log);
-            Controls.Add(top);
-            Controls.Add(Theme.Header("Clean RAM", "One click to push idle memory out of programs. Needs administrator rights."));
-        }
-
-        async Task Go()
-        {
-            if (!Admin.Require(FindForm(), "Clean", "Cleaning RAM")) return;
-            run.Enabled = false; freed.Text = "Cleaning…"; freed.ForeColor = Theme.Muted;
-            bool d = deep.Checked;
-            var r = await Task.Run(() => Cleaner.Run(d));
-            freed.Text = r.Freed > 1 ? "Freed " + Theme.MB(r.Freed) : "Nothing to free right now";
-            freed.ForeColor = r.Freed > 1 ? Theme.Ok : Theme.Muted;
-            result.Items.Clear();
-            Row("In use", r.UsedBefore, r.UsedAfter, true);
-            Row("Available", r.AvailBefore, r.AvailAfter, false);
-            Row("Free (zeroed)", r.FreeBefore, r.FreeAfter, false);
-            Row("Standby (cache)", r.StandbyBefore, r.StandbyAfter, null);
-            Row("Modified (waiting for disk)", r.ModifiedBefore, r.ModifiedAfter, null);
-            Theme.Append(log, DateTime.Now.ToString("HH:mm:ss") + (d ? "  deep clean" : "  quick clean"));
-            foreach (var l in r.Log) Theme.Append(log, "  " + l);
-            run.Enabled = true;
-        }
-
-        void Row(string name, double before, double after, bool? lowerIsBetter)
-        {
-            var it = new ListViewItem(new[] { name, Theme.MB(before), Theme.MB(after), Theme.Delta(after - before) }) { UseItemStyleForSubItems = false };
-            it.SubItems[3].ForeColor = lowerIsBetter.HasValue ? Ui.ChangeColor(after - before, lowerIsBetter.Value) : Theme.Muted;
-            result.Items.Add(it);
         }
     }
 
@@ -296,6 +285,8 @@ namespace Featherweight
             var row2 = Theme.ButtonRow();
             row2.Controls.Add(Theme.Label("Before:", Theme.Base, Theme.Muted)); row2.Controls.Add(before);
             row2.Controls.Add(Theme.Label("After:", Theme.Base, Theme.Muted)); row2.Controls.Add(after); row2.Controls.Add(swap);
+            var del = Theme.Button("Delete…"); del.Click += (s, e) => DeleteSnapshot();
+            row2.Controls.Add(del);
             foreach (Control c in row1.Controls.Cast<Control>().Concat(row2.Controls.Cast<Control>())) if (c is Label) c.Margin = new Padding(0, 7, 6, 0);
             note.Dock = DockStyle.Top; note.Padding = new Padding(0, 0, 0, 6);
             summary.SizeChanged += (s, e) => summary.MaximumSize = new Size(Math.Max(200, Width - 60), 0);
@@ -338,6 +329,17 @@ namespace Featherweight
             }
             filling = false;
             Compare();
+        }
+
+        /// <summary>Deletes the snapshot shown as "After" (or "Before" if only that one is chosen), after asking.</summary>
+        void DeleteSnapshot()
+        {
+            int i = after.SelectedIndex >= 0 ? after.SelectedIndex : before.SelectedIndex;
+            if (i < 0 || i >= files.Count) return;
+            if (MessageBox.Show(FindForm(), "Delete the snapshot “" + Display(files[i]) + "” (the one shown as “After”)?\n\nThis can't be undone.",
+                    "Delete snapshot", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            try { File.Delete(files[i]); } catch (Exception ex) { MessageBox.Show(FindForm(), "Couldn't delete it: " + ex.Message, "Featherweight"); return; }
+            Reload(null, null);
         }
 
         static string Display(string file)

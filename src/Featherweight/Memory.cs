@@ -62,7 +62,7 @@ namespace Featherweight
     }
 
     class ProcInfo { public string Name; public int Id; public double PrivMB, WSMB; }
-    class GroupInfo { public string Group; public int Count; public double PrivMB, WSMB; public string Names; }
+    class GroupInfo { public string Group; public int Count; public double PrivMB, WSMB; public string Names; public List<ProcInfo> Members = new List<ProcInfo>(); }
 
     static class ProcScan
     {
@@ -180,10 +180,10 @@ namespace Featherweight
             }
             var res = sets.Select(s => new GroupInfo
             {
-                Group = s.Key, Count = s.Value.Count, PrivMB = s.Value.Sum(p => p.PrivMB), WSMB = s.Value.Sum(p => p.WSMB),
+                Group = s.Key, Count = s.Value.Count, PrivMB = s.Value.Sum(p => p.PrivMB), WSMB = s.Value.Sum(p => p.WSMB), Members = s.Value,
                 Names = string.Join(", ", s.Value.Select(p => p.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n))
             }).ToList();
-            res.Add(new GroupInfo { Group = "Everything else", Count = rest.Count, PrivMB = rest.Sum(p => p.PrivMB), WSMB = rest.Sum(p => p.WSMB),
+            res.Add(new GroupInfo { Group = "Everything else", Count = rest.Count, PrivMB = rest.Sum(p => p.PrivMB), WSMB = rest.Sum(p => p.WSMB), Members = rest,
                                     Names = string.Join(", ", rest.Select(p => p.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n)) });
             return res;
         }

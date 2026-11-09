@@ -102,7 +102,7 @@ namespace Featherweight
                 "Turn off Windows Update, Microsoft Defender or other security features.",
                 "Collect or send data about you. No tracking, no accounts." }));
             cards.Add(new InfoCard("Good to know", Amber, Glyph("", "i"), cw, new[] {
-                "Clean RAM is a quick boost before a game. The lasting win is fewer background apps (Optimize).",
+                "Free up RAM (on the Dashboard) is a quick boost before a game. The lasting win is fewer background apps (Optimize).",
                 "Looking around is safe without admin rights. Changes ask to restart Featherweight as administrator.",
                 "Your backups and logs stay on this PC. Settings & about shows where." }));
             cards[2].Margin = Padding.Empty;

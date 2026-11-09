@@ -5,6 +5,11 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 ## [Unreleased]
 
 ### Added
+- Dashboard: click a company in "By company" to see its programs (how many copies of each are running and their
+  memory); click again to close it.
+- Featherweight tidies its data folder on start: it keeps the 30 newest unnamed snapshots (named ones stay until you
+  delete them), removes backups that were undone more than 90 days ago (a backup that's still your undo is never
+  removed), and keeps the activity and crash logs under about 1 MB. Snapshots has a Delete button.
 - Dashboard with live memory, commit and kernel memory, history graph, usage by app/vendor and top processes.
 - Optimize page: detects supported background apps/services, shows live memory use, Optimize / Restore default per item,
   and flags items that an update switched back on.
@@ -52,6 +57,8 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 - Settings & about says when Windows' System Protection is off (so no restore points can be made) and opens its settings.
 
 ### Changed
+- The Clean RAM page is now part of the Dashboard: "Free up RAM" does a quick clean, and the arrow next to it offers
+  the deep clean and an explanation of the difference. The result shows under the button.
 - New welcome screen: a header with the logo, and three cards (what it does, what it never does, good to know).
 - Dashboard only lists companies that have something running (no more grey 0 MB rows), and programs that drivers put
   in the Windows folder are grouped under their maker instead of "Windows & Microsoft".

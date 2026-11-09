@@ -52,10 +52,12 @@ Results depend entirely on what's installed on your PC.
 ### 📊 Dashboard
 <img src="docs/images/dashboard.png" alt="Dashboard with live memory use, a history graph and usage by app" width="820">
 
-Live memory, committed memory and kernel memory, a 3-minute history graph, memory use **grouped by app and vendor**, and the top processes.
+Live memory, committed memory and kernel memory, a 3-minute history graph, memory use **grouped by company** (click one to see
+its programs), and the top processes.
 
-### 🧹 Clean RAM in one click
-Pushes idle memory out of every program, which is handy right before launching a game. Shows exactly how much was freed.
+### 🧹 Free up RAM in one click
+On the Dashboard: pushes idle memory out of every program, which is handy right before launching a game, and shows
+exactly how much was freed. The small arrow next to the button offers a deep clean that also empties the file cache.
 Honest note: Windows already manages memory well, so this is a short-term boost. The lasting win is fewer background apps.
 
 ### 🛡️ Security check (read-only)
