@@ -62,8 +62,7 @@ body:
     attributes:
       label: Which part of the app?
       options:
-        - Dashboard
-        - Clean RAM
+        - Dashboard / Free up RAM
         - Optimize
         - Backups / Undo
         - Snapshots
@@ -78,8 +77,9 @@ body:
     attributes:
       label: Activity log or error text (optional)
       description: |
-        On the Optimize page, click **Show activity** and copy the lines here.
-        The full log is in `%LocalAppData%\Featherweight\logs\activity.log`.
+        On the Optimize page, click **Show activity** and copy the lines here, or attach a report from
+        **Settings & about → Export diagnostics** (choose only what this problem needs; "Featherweight's activity" is
+        usually enough). **This page is public**, so read what you attach first.
       render: text
 
   - type: checkboxes

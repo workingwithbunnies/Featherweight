@@ -122,6 +122,7 @@ namespace Featherweight
             Application.SetCompatibleTextRenderingDefault(false);
             Crash.Install(); // friendly error dialog + crash.log instead of a raw .NET error box
             Paths.Ensure();
+            System.Threading.Tasks.Task.Run(() => Housekeeping.Run()); // tidy old snapshots, undone backups and long logs
             Settings.Load();
             if (!Settings.FirstRunDone) using (var w = new WelcomeForm()) w.ShowDialog();
             string page = args.Where(a => a.StartsWith("--page=")).Select(a => a.Substring(7)).FirstOrDefault();

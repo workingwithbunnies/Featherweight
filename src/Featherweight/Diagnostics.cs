@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Management;
@@ -36,15 +37,28 @@ namespace Featherweight
         }
     }
 
+    /// <summary>What the person chose to include in a diagnostics report. App and Windows version are always in it.</summary>
+    class DiagnosticsOptions
+    {
+        public bool Pc = true;          // PC model, processor, memory totals, antivirus
+        public bool Software;           // what Optimize found + other companies' services (needed to support a new brand)
+        public bool Memory;             // memory by company and program right now
+        public bool Activity = true;    // Featherweight's own backups, recent activity and errors
+    }
+
     /// <summary>"Export diagnostics": a plain-text report for bug reports, with personal details removed.</summary>
     static class Diagnostics
     {
-        public static string Build()
+        public static string Build() { return Build(new DiagnosticsOptions { Software = true, Memory = true }); }
+
+        public static string Build(DiagnosticsOptions opt)
         {
             var sb = new StringBuilder();
             Action<string> h = t => sb.AppendLine().AppendLine("== " + t + " ==");
             sb.AppendLine("Featherweight diagnostics, " + DateTime.Now.ToString("yyyy-MM-dd HH:mm"));
-            sb.AppendLine("Please read it before sharing. Your user name and PC name were replaced with <user> and <pc>.");
+            sb.AppendLine("Please read it before sharing. Your user name, PC name, account IDs and email addresses were removed.");
+            sb.AppendLine("Included: app and Windows version" + (opt.Pc ? ", PC details" : "") + (opt.Software ? ", background software" : "") +
+                          (opt.Memory ? ", memory by program" : "") + (opt.Activity ? ", Featherweight activity" : "") + ".");
 
             h("App");
             sb.AppendLine("Version: " + MainForm.AppVersion + (Paths.Portable ? " (portable)" : ""));
@@ -56,18 +70,14 @@ namespace Featherweight
             h("Windows");
             Safe(sb, () =>
             {
-                using (var k = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
-                {
-                    int build; int.TryParse(Convert.ToString(k.GetValue("CurrentBuild")), out build);
-                    string name = Convert.ToString(k.GetValue("ProductName"));
-                    if (build >= 22000) name = name.Replace("Windows 10", "Windows 11"); // the registry name still says 10 on Windows 11
-                    sb.AppendLine(name + " " + k.GetValue("DisplayVersion") + ", build " + build + "." + k.GetValue("UBR") + ", edition " + k.GetValue("EditionID"));
-                }
+                sb.AppendLine(WindowsVersion());
                 sb.AppendLine("64-bit: " + Environment.Is64BitOperatingSystem + ", display language: " + System.Globalization.CultureInfo.CurrentUICulture.Name);
                 using (var k = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full"))
                     sb.AppendLine(".NET Framework release: " + (k == null ? "?" : k.GetValue("Release")));
             });
 
+            if (opt.Pc)
+            {
             h("PC");
             Safe(sb, () =>
             {
@@ -86,7 +96,10 @@ namespace Featherweight
                 foreach (ManagementObject o in new ManagementObjectSearcher(@"root\SecurityCenter2", "SELECT displayName, productState FROM AntiVirusProduct").Get())
                     sb.AppendLine(o["displayName"] + " (state 0x" + Convert.ToUInt32(o["productState"]).ToString("X") + ")");
             });
+            }
 
+            if (opt.Software)
+            {
             h("Optimizations");
             Safe(sb, () =>
             {
@@ -133,14 +146,20 @@ namespace Featherweight
                             sb.AppendLine("- [" + brand + "] " + n + " — " + startText + (Engine.ServiceRunning(n) ? ", running" : ", stopped") + " — " + exe);
                         }
             });
+            }
 
+            if (opt.Memory)
+            {
             h("Memory by company right now");
             Safe(sb, () =>
             {
                 foreach (var g in ProcScan.Group(ProcScan.Processes()).Where(g => g.Count > 0).OrderByDescending(g => g.PrivMB))
                     sb.AppendLine(string.Format("- {0}: {1} process(es), {2:0} MB private — {3}", g.Group, g.Count, g.PrivMB, g.Names));
             });
+            }
 
+            if (opt.Activity)
+            {
             h("Backups");
             Safe(sb, () => { foreach (var b in Engine.ListBackups()) sb.AppendLine(b.Time + "  " + b.PlanName + "  (" + b.Count + " settings)"); });
 
@@ -149,9 +168,42 @@ namespace Featherweight
 
             h("Recent crashes (last 80 lines)");
             Safe(sb, () => Tail(sb, Path.Combine(Paths.Logs, "crash.log"), 80));
+            }
 
             return Privacy.Redact(sb.ToString());
         }
+
+        /// <summary>"Windows 11 Pro 24H2, build 26100.1234, edition Professional".</summary>
+        public static string WindowsVersion()
+        {
+            using (var k = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
+            {
+                int build; int.TryParse(Convert.ToString(k.GetValue("CurrentBuild")), out build);
+                string name = Convert.ToString(k.GetValue("ProductName"));
+                if (build >= 22000) name = name.Replace("Windows 10", "Windows 11"); // the registry name still says 10 on Windows 11
+                return name + " " + k.GetValue("DisplayVersion") + ", build " + build + "." + k.GetValue("UBR") + ", edition " + k.GetValue("EditionID");
+            }
+        }
+
+        /// <summary>
+        /// Just one Optimize item, for a "describe this app" request: its identifiers, facts and what Featherweight would
+        /// change. Nothing else from the PC. Personal details are removed.
+        /// </summary>
+        public static string ItemReport(Optimization o)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Featherweight " + MainForm.AppVersion + " · " + SafeText(WindowsVersion));
+            sb.AppendLine("App: " + o.Title + (o.Kind != null ? " (" + o.Kind.ToLowerInvariant() + ")" : "") + ", company: " + o.Category);
+            if (o.Ids.Count > 0) sb.AppendLine("Identifiers: " + string.Join(", ", o.Ids.Select(kv => kv.Key + "=" + kv.Value)));
+            else sb.AppendLine("Catalog item: " + o.Id);
+            sb.AppendLine("Reviewed entry: " + (o.Knowledge != null ? o.Knowledge.Id + " (knowledge base v" + Knowledge.Version + ")" : o.Discovered ? "none yet" : "built-in catalog"));
+            sb.AppendLine("Status: " + o.State + (o.ViewOnly ? " (information only)" : "") + ", running " + o.RunningCount + " process(es), " + o.LiveMB.ToString("0") + " MB");
+            if (o.Facts.Count > 0) { sb.AppendLine("On this PC:"); foreach (var f in o.Facts) sb.AppendLine("- " + f); }
+            if (o.Changes.Count > 0) { sb.AppendLine("What Featherweight would change:"); foreach (var c in o.Changes) sb.AppendLine(c); }
+            return Privacy.Redact(sb.ToString());
+        }
+
+        static string SafeText(Func<string> f) { try { return f(); } catch { return "Windows version unknown"; } }
 
         static void Tail(StringBuilder sb, string file, int n)
         {
@@ -167,7 +219,9 @@ namespace Featherweight
         /// <summary>Builds the report, asks where to save it, then opens it so the user can read it before sharing.</summary>
         public static async Task Export(IWin32Window owner)
         {
-            string text = await Task.Run(() => Build());
+            DiagnosticsOptions opt;
+            using (var ask = new DiagnosticsDialog()) { if (ask.ShowDialog(owner) != DialogResult.OK) return; opt = ask.Options; }
+            string text = await Task.Run(() => Build(opt));
             using (var dlg = new SaveFileDialog
             {
                 Title = "Save diagnostics report", Filter = "Text file (*.txt)|*.txt",
@@ -179,6 +233,52 @@ namespace Featherweight
                 File.WriteAllText(dlg.FileName, text, new UTF8Encoding(false));
                 try { Process.Start("notepad.exe", "\"" + dlg.FileName + "\""); } catch { }
             }
+        }
+    }
+
+    /// <summary>Asks what to include in a diagnostics report, with an honest note about where it might end up.</summary>
+    class DiagnosticsDialog : Form
+    {
+        readonly CheckBox pc = Box("PC details", "Maker and model, processor, memory totals, antivirus name.", true);
+        readonly CheckBox software = Box("Background software on this PC",
+            "What the Optimize page found and other companies' services, with program locations. Needed when asking for your PC's apps to be supported.", false);
+        readonly CheckBox memory = Box("Memory by program", "How much memory each company's programs use right now.", false);
+        readonly CheckBox activity = Box("Featherweight's activity", "Its backups, recent activity log and error details. Usually all a bug report needs.", true);
+        readonly List<Label> notes = new List<Label>();
+
+        public DiagnosticsOptions Options { get { return new DiagnosticsOptions { Pc = pc.Checked, Software = software.Checked, Memory = memory.Checked, Activity = activity.Checked }; } }
+
+        public DiagnosticsDialog()
+        {
+            AutoScaleDimensions = new SizeF(96F, 96F); AutoScaleMode = AutoScaleMode.Dpi;
+            Text = "Export diagnostics"; Font = Theme.Base; BackColor = Theme.Card;
+            FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = MinimizeBox = false; ShowInTaskbar = false; StartPosition = FormStartPosition.CenterParent;
+            AutoSize = true; AutoSizeMode = AutoSizeMode.GrowAndShrink; Padding = new Padding(24, 20, 24, 20);
+            var stack = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, BackColor = Theme.Card };
+            stack.Controls.Add(Theme.Label("What should the report include?", Theme.H2));
+            stack.Controls.Add(Note("The app and Windows version are always included. Tick only what your report needs.", Theme.Muted));
+            var always = Theme.Label("✓  App and Windows version", Theme.Bold, Theme.Muted); always.Margin = new Padding(0, 10, 0, 2); stack.Controls.Add(always);
+            foreach (var c in new[] { pc, software, memory, activity }) { stack.Controls.Add(c); stack.Controls.Add(Note((string)c.Tag, Theme.Muted, 20)); }
+            var warn = Note("Anything you attach to a GitHub issue is public: anyone can read it. Featherweight removes your user name, PC name, " +
+                            "account IDs and email addresses, and the file opens so you can check it before you share it.", Theme.Warn);
+            warn.Margin = new Padding(0, 12, 0, 4); stack.Controls.Add(warn);
+            var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, BackColor = Theme.Card, Margin = new Padding(0, 10, 0, 0) };
+            var ok = Theme.Button("Create report", true); ok.DialogResult = DialogResult.OK;
+            var cancel = Theme.Button("Cancel"); cancel.DialogResult = DialogResult.Cancel;
+            row.Controls.Add(ok); row.Controls.Add(cancel);
+            stack.Controls.Add(row);
+            AcceptButton = ok; CancelButton = cancel;
+            Controls.Add(stack);
+        }
+
+        static CheckBox Box(string text, string note, bool on)
+        {
+            return new CheckBox { Text = text, Checked = on, AutoSize = true, Font = Theme.Bold, Margin = new Padding(0, 10, 0, 0), Tag = note, BackColor = Theme.Card };
+        }
+
+        static Label Note(string text, Color color, int indent = 0)
+        {
+            var l = Theme.Label(text, Theme.Small, color); l.MaximumSize = new Size(520, 0); l.Margin = new Padding(indent, 0, 0, 2); l.BackColor = Theme.Card; return l;
         }
     }
 

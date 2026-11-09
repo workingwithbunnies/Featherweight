@@ -52,10 +52,12 @@ Results depend entirely on what's installed on your PC.
 ### 📊 Dashboard
 <img src="docs/images/dashboard.png" alt="Dashboard with live memory use, a history graph and usage by app" width="820">
 
-Live memory, committed memory and kernel memory, a 3-minute history graph, memory use **grouped by app and vendor**, and the top processes.
+Live memory, committed memory and kernel memory, a 3-minute history graph, memory use **grouped by company** (click one to see
+its programs), and the top processes.
 
-### 🧹 Clean RAM in one click
-Pushes idle memory out of every program, which is handy right before launching a game. Shows exactly how much was freed.
+### 🧹 Free up RAM in one click
+On the Dashboard: pushes idle memory out of every program, which is handy right before launching a game, and shows
+exactly how much was freed. The small arrow next to the button offers a deep clean that also empties the file cache.
 Honest note: Windows already manages memory well, so this is a short-term boost. The lasting win is fewer background apps.
 
 ### 🛡️ Security check (read-only)
@@ -171,10 +173,12 @@ and it never downloads or installs programs by itself.
 ## Contributing
 
 You don't need to code to help:
-- 🐞 [Report a bug](../../issues/new/choose). Tip: **Settings & about → Export diagnostics** creates a report you can attach, with your user and PC name removed
+- 🐞 [Report a bug](../../issues/new/choose). Tip: **Settings & about → Export diagnostics** creates a report you can attach; you choose what's in it, and your user and PC name are removed
 - 💡 [Suggest an idea](../../issues/new/choose)
-- 🖥️ [Ask for your PC's apps to be supported](../../issues/new/choose); usually a list of process names is all that's needed
-- 📄 Add an optimization yourself: it's just JSON ([guide](docs/CATALOG.md))
+- 🖥️ [Help describe an app](../../issues/new/choose): on the Optimize page, select it and click **Copy for a report** (only that app's details)
+- 📄 Write descriptions yourself: it's just JSON ([guide](docs/KNOWLEDGE.md))
+
+GitHub issues are public, so read what you share first. More in [CONTRIBUTING.md](CONTRIBUTING.md#privacy-when-you-share).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
