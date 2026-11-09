@@ -173,10 +173,12 @@ and it never downloads or installs programs by itself.
 ## Contributing
 
 You don't need to code to help:
-- 🐞 [Report a bug](../../issues/new/choose). Tip: **Settings & about → Export diagnostics** creates a report you can attach, with your user and PC name removed
+- 🐞 [Report a bug](../../issues/new/choose). Tip: **Settings & about → Export diagnostics** creates a report you can attach; you choose what's in it, and your user and PC name are removed
 - 💡 [Suggest an idea](../../issues/new/choose)
-- 🖥️ [Ask for your PC's apps to be supported](../../issues/new/choose); usually a list of process names is all that's needed
-- 📄 Add an optimization yourself: it's just JSON ([guide](docs/CATALOG.md))
+- 🖥️ [Help describe an app](../../issues/new/choose): on the Optimize page, select it and click **Copy for a report** (only that app's details)
+- 📄 Write descriptions yourself: it's just JSON ([guide](docs/KNOWLEDGE.md))
+
+GitHub issues are public, so read what you share first. More in [CONTRIBUTING.md](CONTRIBUTING.md#privacy-when-you-share).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 

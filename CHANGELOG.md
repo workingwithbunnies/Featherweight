@@ -56,7 +56,13 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
   describe items, never mark them Recommended).
 - Settings & about says when Windows' System Protection is off (so no restore points can be made) and opens its settings.
 
+- Optimize: **Copy for a report** copies just the selected app's names, facts and changes (personal details removed)
+  and offers to open the "Describe an app" request form.
+
 ### Changed
+- Export diagnostics asks what to include (PC details, background software, memory by program, Featherweight's
+  activity) with only the basics ticked, and warns that GitHub issues are public. The request forms and
+  CONTRIBUTING.md explain what to share and why.
 - The Clean RAM page is now part of the Dashboard: "Free up RAM" does a quick clean, and the arrow next to it offers
   the deep clean and an explanation of the difference. The result shows under the button.
 - New welcome screen: a header with the logo, and three cards (what it does, what it never does, good to know).

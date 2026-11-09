@@ -20,7 +20,7 @@ namespace Featherweight
         readonly Label dTitle = Theme.Label("", Theme.H2), dCategory = Theme.Label("", Theme.Small, Theme.Muted), dStatus = Theme.Label("", Theme.Bold);
         readonly Label dVerdict = Theme.Label("", Theme.Bold), dNote = Theme.Label("", Theme.Base);
         readonly Label dDesc = Theme.Label(""), dMemory = Theme.Label("", Theme.Base, Theme.Muted), dRisk = Theme.Label("", Theme.Base, Theme.Muted);
-        readonly Button optimize = Theme.Button("Optimize", true), restore = Theme.Button("Restore default");
+        readonly Button optimize = Theme.Button("Optimize", true), restore = Theme.Button("Restore default"), report = Theme.Button("Copy for a report");
         readonly TextBox dChanges = new TextBox
         {
             Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, WordWrap = true, Dock = DockStyle.Fill,
@@ -40,7 +40,8 @@ namespace Featherweight
             // ---- details panel
             var detail = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, BackColor = Theme.Card, Padding = new Padding(18, 14, 18, 14) };
             var buttons = new FlowLayoutPanel { AutoSize = true, BackColor = Theme.Card, Margin = new Padding(0, 10, 0, 12) };
-            buttons.Controls.Add(optimize); buttons.Controls.Add(restore);
+            buttons.Controls.Add(optimize); buttons.Controls.Add(restore); buttons.Controls.Add(report);
+            report.Margin = new Padding(0, 6, 8, 0);
             var rows = new Control[] { dCategory, dTitle, dStatus, dDesc, dVerdict, dNote, dMemory, dRisk, buttons, changesLabel, dChanges };
             foreach (var c in rows) { detail.Controls.Add(c); detail.RowStyles.Add(new RowStyle(SizeType.AutoSize)); }
             detail.RowStyles[detail.RowStyles.Count - 1] = new RowStyle(SizeType.Percent, 100);
@@ -64,6 +65,7 @@ namespace Featherweight
             optimizeAll.Click += async (s, e) => await DoOptimize(Visible_().Where(o => o.Verdict == Verdict.Recommended && !o.IsManual).ToList());
             optimize.Click += async (s, e) => await DoOptimize(Selected());
             restore.Click += async (s, e) => await DoRestore(Selected());
+            report.Click += (s, e) => CopyForReport();
             showAdvanced.CheckedChanged += (s, e) => Fill(Selected().Select(o => o.Id).ToList());
 
             var right = new FlowLayoutPanel { AutoSize = true, BackColor = Theme.Bg, WrapContents = false };
@@ -219,7 +221,7 @@ namespace Featherweight
             if (sel.Count == 0)
             {
                 dTitle.Text = "Select an item"; dCategory.Text = dStatus.Text = dVerdict.Text = dNote.Text = dDesc.Text = dMemory.Text = dRisk.Text = dChanges.Text = "";
-                optimize.Enabled = restore.Enabled = false; return;
+                optimize.Enabled = restore.Enabled = report.Enabled = false; return;
             }
             if (sel.Count > 1)
             {
@@ -233,6 +235,7 @@ namespace Featherweight
                 dChanges.Select(0, 0);
                 optimize.Enabled = !busy && sel.Any(o => !o.ViewOnly && o.State != OptState.Optimized);
                 restore.Enabled = !busy && sel.Any(o => !o.ViewOnly && o.State != OptState.NotOptimized);
+                report.Enabled = false; // one app at a time
                 return;
             }
             var x = sel[0];
@@ -266,6 +269,7 @@ namespace Featherweight
             if (x.IsManual) { optimize.Text = "How to turn it off"; restore.Text = "How to turn it back on"; }
             optimize.Enabled = !busy && !x.ViewOnly && x.State != OptState.Optimized;
             restore.Enabled = !busy && !x.ViewOnly && x.State != OptState.NotOptimized;
+            report.Enabled = true;
         }
 
         void SetEnabled(bool on)
@@ -273,6 +277,21 @@ namespace Featherweight
             optimizeAll.Enabled = rescan.Enabled = list.Enabled = on;
             if (!on) optimize.Enabled = restore.Enabled = false;
             else { ShowDetails(); if (list.CanFocus) list.Focus(); } // keep the focus on the list, not the details text
+        }
+
+        /// <summary>Copies just the selected app's details (identifiers, facts, changes) for a "describe this app" request.</summary>
+        void CopyForReport()
+        {
+            var sel = Selected();
+            if (sel.Count != 1) { MessageBox.Show(FindForm(), "Select one item first.", "Copy for a report"); return; }
+            string text = Diagnostics.ItemReport(sel[0]);
+            try { Clipboard.SetText(text); } catch { MessageBox.Show(FindForm(), "Couldn't copy to the clipboard. Please try again.", "Copy for a report"); return; }
+            if (MessageBox.Show(FindForm(),
+                    "Copied the details of “" + sel[0].Title + "”: its names, the facts shown here and what Featherweight would change. " +
+                    "Nothing else from your PC, and your user name and PC name are removed.\n\n" +
+                    "GitHub requests are public. Open the “Describe an app” form now and paste it there?",
+                    "Copy for a report", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                try { System.Diagnostics.Process.Start(Updates.ProjectPage + "/issues/new?template=new_vendor.yml"); } catch { }
         }
 
         void ShowLog(bool show) { log.Visible = show; toggleLog.Text = show ? "Hide activity" : "Show activity"; }

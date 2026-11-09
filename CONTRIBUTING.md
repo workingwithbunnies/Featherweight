@@ -5,15 +5,29 @@ Thanks for helping! There are many ways to contribute, and most don't need any c
 ## Without coding
 
 - **Report bugs** using the *Bug report* form under Issues.
-- **Ask for a vendor app to be supported** (ASUS, MSI, Lenovo, HP, Razer…) using the *Support a new app or vendor* form.
-  Telling us which processes and services you see is often all that's needed.
+- **Help describe an app** Featherweight found on your PC (ASUS, MSI, Lenovo, HP, Razer…): in the app, open
+  **Optimize**, select it, click **Copy for a report**, and paste that into the *Describe an app* form. It contains
+  only that app's details. Tell us what it does that people might still want.
 - **Test on your PC** and tell us what Featherweight detected and suggested. Reports from different PC models are very valuable.
 - **Improve the wording** of descriptions or docs.
 
-## Adding to the catalog (JSON, no C#)
+## Privacy when you share
 
-The optimization list is [`src/Featherweight/catalog.json`](src/Featherweight/catalog.json). See
-[docs/CATALOG.md](docs/CATALOG.md) for the format and the testing checklist.
+Everything on GitHub issues and discussions is **public**. Featherweight never sends anything by itself, and what it
+copies or exports has your user name, PC name, Windows account IDs and email addresses removed. Still, read it before
+posting, and share only what the report needs:
+
+- **Copy for a report** (Optimize): one app's names and facts. Best for describing an app.
+- **Export diagnostics** (Settings & about): you choose what to include. "Featherweight's activity" is usually
+  enough for a bug; tick "Background software" only when asking for your PC's apps to be supported.
+- Security problems: please use private vulnerability reporting (see [SECURITY.md](SECURITY.md)), not a public issue.
+
+## Writing descriptions (JSON, no C#)
+
+- Descriptions of found apps: [`src/Featherweight/knowledge.json`](src/Featherweight/knowledge.json), guide in
+  [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md). Every sentence must be true on any PC, with a source or a test.
+- Built-in optimizations: [`src/Featherweight/catalog.json`](src/Featherweight/catalog.json), guide in
+  [docs/CATALOG.md](docs/CATALOG.md).
 
 ## Code changes
 
