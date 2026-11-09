@@ -30,7 +30,7 @@ jobs:
           "$hash  Featherweight.exe" | Set-Content artifacts/Featherweight.exe.sha256 -Encoding ascii
 
           # Take this version's section from CHANGELOG.md ("## [x.y.z]" up to the next "## [").
-          $lines = Get-Content CHANGELOG.md
+          $lines = Get-Content CHANGELOG.md -Encoding UTF8   # Windows PowerShell would read it as ANSI and garble "→"
           $start = ($lines | Select-String -Pattern ("^## \[" + [regex]::Escape($version) + "\]") | Select-Object -First 1).LineNumber
           if ($start) {
             $rest = $lines[$start..($lines.Count - 1)]
