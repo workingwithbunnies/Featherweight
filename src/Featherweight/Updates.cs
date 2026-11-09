@@ -32,8 +32,10 @@ namespace Featherweight
             {
                 bool pre = IsPrerelease(MainForm.AppVersion);
                 var json = Get("https://api.github.com/repos/" + Repo + (pre ? "/releases?per_page=20" : "/releases/latest"));
-                var releases = pre ? ((json as List<object>) ?? new List<object>()).OfType<Dictionary<string, object>>().ToList()
-                                   : new List<Dictionary<string, object>> { (Dictionary<string, object>)json };
+                // The JSON reader returns a list of releases as an array (object[]), a single release as a dictionary.
+                var list = json as System.Collections.IList;
+                var releases = list != null ? list.OfType<Dictionary<string, object>>().ToList()
+                                            : new List<Dictionary<string, object>> { json as Dictionary<string, object> }.Where(d => d != null).ToList();
                 UpdateInfo best = null;
                 foreach (var d in releases.Where(d => !d.Bool("draft")))
                 {

@@ -4,6 +4,13 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 
 ## [Unreleased]
 
+## [0.1.0-alpha.2] - 2026-11-09
+
+### Fixed
+- **Check for updates** found nothing when running an alpha ("No releases have been published yet"), so testers
+  wouldn't have been told about new versions. It now finds the newest release, including alphas.
+- Release notes on GitHub show arrows and other special characters correctly.
+
 ## [0.1.0-alpha] - 2026-11-09
 
 First public test version (alpha). Tested on two laptops so far (Dell G15, HP OMEN 16, both Windows 11); feedback from other PCs is very welcome.
