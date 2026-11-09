@@ -98,22 +98,93 @@ namespace Featherweight
             return list;
         }
 
+        // Program path per process id, remembered while the process lives (the name guards against a reused id).
+        static readonly Dictionary<int, KeyValuePair<string, string>> paths = new Dictionary<int, KeyValuePair<string, string>>();
+
+        /// <summary>Full program path of a process, or null when Windows doesn't tell us (protected system processes).</summary>
+        public static string PathOf(ProcInfo p)
+        {
+            lock (paths)
+            {
+                KeyValuePair<string, string> hit;
+                if (paths.TryGetValue(p.Id, out hit) && hit.Key == p.Name) return hit.Value;
+                string path = Native.ProcessPath(p.Id);
+                if (paths.Count > 4000) paths.Clear();
+                paths[p.Id] = new KeyValuePair<string, string>(p.Name, path);
+                return path;
+            }
+        }
+
+        public const string WindowsGroup = "Windows & Microsoft";
+
+        // Program name → full path for every installed service: without admin rights Windows hides the path of
+        // services running as SYSTEM, but the service list still says which program each one runs.
+        static Dictionary<string, string> servicePrograms;
+        static Dictionary<string, string> ServicePrograms()
+        {
+            if (servicePrograms != null) return servicePrograms;
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                using (var root = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services"))
+                    foreach (var n in root.GetSubKeyNames())
+                        using (var k = root.OpenSubKey(n))
+                        {
+                            string exe = k == null ? null : Publisher.ExeFromCommand(k.GetValue("ImagePath") as string);
+                            if (exe != null && exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && exe.Contains("\\"))
+                            {
+                                string name = System.IO.Path.GetFileNameWithoutExtension(exe);
+                                if (!map.ContainsKey(name)) map[name] = exe;
+                            }
+                        }
+            }
+            catch { }
+            return servicePrograms = map;
+        }
+
+        /// <summary>Best guess at a process's program when Windows won't tell us its path.</summary>
+        static string GuessPath(ProcInfo p)
+        {
+            string path;
+            if (ServicePrograms().TryGetValue(p.Name, out path)) return path;
+            string sys = System.IO.Path.Combine(Environment.SystemDirectory, p.Name + ".exe");
+            if (System.IO.File.Exists(sys)) return sys;
+            return null;
+        }
+
         public static List<GroupInfo> Group(List<ProcInfo> procs)
         {
             var taken = new HashSet<int>();
-            var res = new List<GroupInfo>();
+            var sets = new List<KeyValuePair<string, List<ProcInfo>>>();
             foreach (var g in Groups)
             {
                 var m = procs.Where(p => !taken.Contains(p.Id) && g.Value.IsMatch(p.Name)).ToList();
                 foreach (var p in m) taken.Add(p.Id);
-                res.Add(new GroupInfo
-                {
-                    Group = g.Key, Count = m.Count, PrivMB = m.Sum(p => p.PrivMB), WSMB = m.Sum(p => p.WSMB),
-                    Names = string.Join(", ", m.Select(p => p.Name).Distinct().OrderBy(n => n))
-                });
+                sets.Add(new KeyValuePair<string, List<ProcInfo>>(g.Key, m));
             }
-            var rest = procs.Where(p => !taken.Contains(p.Id)).ToList();
-            res.Add(new GroupInfo { Group = "Everything else", Count = rest.Count, PrivMB = rest.Sum(p => p.PrivMB), WSMB = rest.Sum(p => p.WSMB), Names = "" });
+            // Everything else is grouped by the company that made it, so any brand (HP, Lenovo, ASUS…) shows by name.
+            var rest = new List<ProcInfo>();
+            foreach (var p in procs.Where(p => !taken.Contains(p.Id)))
+            {
+                string path = PathOf(p) ?? GuessPath(p);
+                string brand = path == null ? null : Publisher.Of(path, false);
+                bool inWindows = path != null && path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows) + "\\", StringComparison.OrdinalIgnoreCase);
+                // Drivers install their helpers inside the Windows folder too (AMD, Realtek, HP…): only Microsoft's own
+                // programs, or ones that name no company at all there, count as Windows.
+                if (brand == null || brand == Publisher.Unknown) { if (inWindows) brand = WindowsGroup; else { rest.Add(p); continue; } }
+                else if (Publisher.IsMicrosoft(brand)) brand = WindowsGroup;
+                // join a fixed group of the same brand ("Dell" → "Dell/Alienware")
+                int i = sets.FindIndex(s => s.Key.Equals(brand, StringComparison.OrdinalIgnoreCase) || s.Key.StartsWith(brand + "/", StringComparison.OrdinalIgnoreCase));
+                if (i < 0) { sets.Add(new KeyValuePair<string, List<ProcInfo>>(brand, new List<ProcInfo>())); i = sets.Count - 1; }
+                sets[i].Value.Add(p);
+            }
+            var res = sets.Select(s => new GroupInfo
+            {
+                Group = s.Key, Count = s.Value.Count, PrivMB = s.Value.Sum(p => p.PrivMB), WSMB = s.Value.Sum(p => p.WSMB),
+                Names = string.Join(", ", s.Value.Select(p => p.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n))
+            }).ToList();
+            res.Add(new GroupInfo { Group = "Everything else", Count = rest.Count, PrivMB = rest.Sum(p => p.PrivMB), WSMB = rest.Sum(p => p.WSMB),
+                                    Names = string.Join(", ", rest.Select(p => p.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n)) });
             return res;
         }
     }

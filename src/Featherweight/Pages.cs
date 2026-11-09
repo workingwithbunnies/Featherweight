@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -107,12 +108,9 @@ namespace Featherweight
         {
             var procs = ProcScan.Processes();
             groups.BeginUpdate(); groups.Items.Clear();
-            foreach (var g in ProcScan.Group(procs).OrderByDescending(g => g.PrivMB))
-            {
-                var it = new ListViewItem(new[] { g.Group, g.Count.ToString(), Theme.MB(g.PrivMB), Theme.MB(g.WSMB) }) { ToolTipText = g.Names };
-                if (g.Count == 0) it.ForeColor = Theme.Muted;
-                groups.Items.Add(it);
-            }
+            // Only companies with something running: the fixed groups (Claude, Dell…) used to show as grey 0 MB rows on every PC.
+            foreach (var g in ProcScan.Group(procs).Where(g => g.Count > 0).OrderByDescending(g => g.PrivMB))
+                groups.Items.Add(new ListViewItem(new[] { g.Group, g.Count.ToString(), Theme.MB(g.PrivMB), Theme.MB(g.WSMB) }) { ToolTipText = g.Names });
             groups.EndUpdate(); Theme.FillColumn(groups);
             top.BeginUpdate(); top.Items.Clear();
             foreach (var p in procs.OrderByDescending(p => p.PrivMB).Take(30))
@@ -277,69 +275,177 @@ namespace Featherweight
         readonly ComboBox before = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300, Margin = new Padding(0, 3, 10, 0) };
         readonly ComboBox after = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300, Margin = new Padding(0, 3, 10, 0) };
         readonly ListView result = Theme.List("What", -1, "Before", 120, "After", 120, "Change", 120);
-        readonly Label note = Theme.Label("", Theme.Small, Theme.Warn);
+        readonly Label summary = new Label { Dock = DockStyle.Top, AutoSize = true, Font = Theme.Bold, ForeColor = Theme.Text, Padding = new Padding(0, 4, 0, 6), UseMnemonic = false };
+        readonly Label note = Theme.Label("", Theme.Small, Theme.Muted);
         List<string> files = new List<string>();
+        bool filling;
+        const double ProgramThresholdMB = 5;
 
         public SnapshotsPage()
         {
             Ui.RightAlign(result, 1, 2, 3);
             var take = Theme.Button("Take snapshot", true);
-            take.Click += (s, e) => { var p = Snapshots.Take(label.Text.Trim()); label.Text = ""; Reload(); after.SelectedIndex = 0; };
+            take.Click += (s, e) => Take();
+            label.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; Take(); } };
             var folder = Theme.Button("Open snapshots folder"); folder.Click += (s, e) => Paths.Open(Paths.Snapshots);
             var row1 = Theme.ButtonRow();
             row1.Controls.Add(Theme.Label("Name (optional):", Theme.Base, Theme.Muted)); row1.Controls.Add(label); row1.Controls.Add(take); row1.Controls.Add(folder);
-            var compare = Theme.Button("Compare"); compare.Click += (s, e) => Compare();
+            var swap = Theme.Button("Swap"); swap.Click += (s, e) => { if (before.SelectedIndex >= 0 && after.SelectedIndex >= 0) { filling = true; int b = before.SelectedIndex; before.SelectedIndex = after.SelectedIndex; after.SelectedIndex = b; filling = false; Compare(); } };
+            before.SelectedIndexChanged += (s, e) => { if (!filling) Compare(); };
+            after.SelectedIndexChanged += (s, e) => { if (!filling) Compare(); };
             var row2 = Theme.ButtonRow();
             row2.Controls.Add(Theme.Label("Before:", Theme.Base, Theme.Muted)); row2.Controls.Add(before);
-            row2.Controls.Add(Theme.Label("After:", Theme.Base, Theme.Muted)); row2.Controls.Add(after); row2.Controls.Add(compare);
+            row2.Controls.Add(Theme.Label("After:", Theme.Base, Theme.Muted)); row2.Controls.Add(after); row2.Controls.Add(swap);
             foreach (Control c in row1.Controls.Cast<Control>().Concat(row2.Controls.Cast<Control>())) if (c is Label) c.Margin = new Padding(0, 7, 6, 0);
+            note.Dock = DockStyle.Top; note.Padding = new Padding(0, 0, 0, 6);
+            summary.SizeChanged += (s, e) => summary.MaximumSize = new Size(Math.Max(200, Width - 60), 0);
 
             Controls.Add(result);
             Controls.Add(note);
-            note.Dock = DockStyle.Top;
+            Controls.Add(summary);
             Controls.Add(row2);
             Controls.Add(row1);
-            Controls.Add(Theme.Header("Snapshots", "Save a picture of memory use now, then compare two snapshots, e.g. before and after a change."));
+            Controls.Add(Theme.Header("Snapshots",
+                "Save a picture of memory use now, then compare two, e.g. before and after you switch something off. " +
+                "Taking a snapshot compares it with the one before automatically."));
         }
 
-        public override void OnShow() { Reload(); }
+        public override void OnShow() { Reload(null, null); }
 
-        void Reload()
+        void Take()
         {
-            files = Snapshots.List();
-            var names = files.Select(f => Path.GetFileNameWithoutExtension(f) + "   (" + File.GetLastWriteTime(f).ToString("dd MMM HH:mm") + ")").ToArray();
-            int b = before.SelectedIndex, a = after.SelectedIndex;
+            string previous = files.FirstOrDefault();
+            string path = Snapshots.Take(label.Text.Trim());
+            label.Text = "";
+            Reload(path, previous); // newest as "After", the one just before it as "Before"
+        }
+
+        /// <summary>Fills both lists, keeping (or setting) the chosen snapshots by file, not by position.</summary>
+        void Reload(string selectAfter, string selectBefore)
+        {
+            string keepB = selectBefore ?? (before.SelectedIndex >= 0 && before.SelectedIndex < files.Count ? files[before.SelectedIndex] : null);
+            string keepA = selectAfter ?? (after.SelectedIndex >= 0 && after.SelectedIndex < files.Count ? files[after.SelectedIndex] : null);
+            files = Snapshots.List(); // newest first
+            var names = files.Select(Display).ToArray();
+            filling = true;
             before.Items.Clear(); after.Items.Clear(); before.Items.AddRange(names); after.Items.AddRange(names);
-            if (files.Count > 0) { after.SelectedIndex = a >= 0 && a < files.Count ? a : 0; before.SelectedIndex = b >= 0 && b < files.Count ? b : Math.Min(1, files.Count - 1); }
+            if (files.Count > 0)
+            {
+                int a = keepA != null ? files.IndexOf(keepA) : -1, b = keepB != null ? files.IndexOf(keepB) : -1;
+                if (a < 0) a = 0;                                   // newest
+                if (b < 0 || b == a) b = Math.Min(a + 1, files.Count - 1); // the one taken just before it
+                after.SelectedIndex = a; before.SelectedIndex = b;
+            }
+            filling = false;
+            Compare();
+        }
+
+        static string Display(string file)
+        {
+            string name = Path.GetFileNameWithoutExtension(file);
+            string when = File.GetLastWriteTime(file).ToString("ddd d MMM, HH:mm");
+            return Regex.IsMatch(name, @"^\d{8}-\d{6}( \(\d+\))?$") ? "Snapshot  ·  " + when : name + "  ·  " + when;
         }
 
         void Compare()
         {
-            if (before.SelectedIndex < 0 || after.SelectedIndex < 0) return;
-            var x = Json.ReadFile(files[before.SelectedIndex]); var y = Json.ReadFile(files[after.SelectedIndex]);
             result.BeginUpdate(); result.Items.Clear();
-            var sx = x.Obj("System"); var sy = y.Obj("System");
-            Row("Memory in use", sx.Num("UsedMB"), sy.Num("UsedMB"), true, true);
-            Row("Available", sx.Num("AvailableMB"), sy.Num("AvailableMB"), false, true);
-            Row("Committed", sx.Num("CommitMB"), sy.Num("CommitMB"), true, true);
-            Row("Kernel non-paged", sx.Num("NonpagedMB"), sy.Num("NonpagedMB"), true, true);
-            Row("Kernel paged", sx.Num("PagedMB"), sy.Num("PagedMB"), true, true);
-            Row("Processes", sx.Num("Processes"), sy.Num("Processes"), true, false);
-            result.Items.Add(new ListViewItem(""));
-            var gx = x.List("Groups").ToDictionary(g => g.Str("Group"), g => g.Num("PrivMB"));
-            var gy = y.List("Groups").ToDictionary(g => g.Str("Group"), g => g.Num("PrivMB"));
-            foreach (var name in gx.Keys.Union(gy.Keys).OrderBy(n => (gy.ContainsKey(n) ? gy[n] : 0) - (gx.ContainsKey(n) ? gx[n] : 0)))
-                Row(name, gx.ContainsKey(name) ? gx[name] : 0, gy.ContainsKey(name) ? gy[name] : 0, true, true);
-            result.EndUpdate(); Theme.FillColumn(result);
-            double ux = x.Num("UptimeMin"), uy = y.Num("UptimeMin");
-            note.Text = Math.Abs(ux - uy) > 30
-                ? "Note: uptimes differ (" + ux.ToString("0") + " vs " + uy.ToString("0") + " min after boot). Memory grows after boot, so per-app rows are more reliable than totals."
-                : "Uptime at capture: " + ux.ToString("0") + " vs " + uy.ToString("0") + " min after boot.";
+            try
+            {
+                if (files.Count < 2)
+                {
+                    summary.Text = files.Count == 0 ? "No snapshots yet. Take one now, change something (or just wait), then take another to compare."
+                                                    : "One snapshot saved. Take another one later to see what changed.";
+                    note.Text = ""; return;
+                }
+                if (before.SelectedIndex < 0 || after.SelectedIndex < 0) return;
+                if (before.SelectedIndex == after.SelectedIndex) { summary.Text = "Pick two different snapshots to compare."; note.Text = ""; return; }
+                var x = Json.ReadFile(files[before.SelectedIndex]); var y = Json.ReadFile(files[after.SelectedIndex]);
+                var sx = x.Obj("System"); var sy = y.Obj("System");
+
+                Section("Overall");
+                Row("Memory in use", sx.Num("UsedMB"), sy.Num("UsedMB"), true, true);
+                Row("Available", sx.Num("AvailableMB"), sy.Num("AvailableMB"), false, true);
+                Row("Committed", sx.Num("CommitMB"), sy.Num("CommitMB"), true, true);
+                Row("Kernel non-paged", sx.Num("NonpagedMB"), sy.Num("NonpagedMB"), true, true);
+                Row("Kernel paged", sx.Num("PagedMB"), sy.Num("PagedMB"), true, true);
+                Row("Processes", sx.Num("Processes"), sy.Num("Processes"), true, false);
+
+                // By company: only companies that had something running in either snapshot, biggest drops first.
+                Section("By company");
+                var gx = x.List("Groups").ToDictionary(g => g.Str("Group"), g => g.Num("PrivMB"));
+                var gy = y.List("Groups").ToDictionary(g => g.Str("Group"), g => g.Num("PrivMB"));
+                foreach (var name in gx.Keys.Union(gy.Keys).Where(n => Val(gx, n) >= 1 || Val(gy, n) >= 1).OrderBy(n => Val(gy, n) - Val(gx, n)))
+                    Row(name, Val(gx, name), Val(gy, name), true, true);
+
+                // By program: what actually grew, shrank, started or closed.
+                var px = Programs(x); var py = Programs(y);
+                var changed = px.Keys.Union(py.Keys, StringComparer.OrdinalIgnoreCase)
+                    .Select(n => new { n, a = Val(px, n), b = Val(py, n) })
+                    .Where(c => Math.Abs(c.b - c.a) >= ProgramThresholdMB).OrderBy(c => c.b - c.a).ToList();
+                bool full = x.ContainsKey("Programs") && y.ContainsKey("Programs");
+                Section("By program (changed by " + ProgramThresholdMB + " MB or more)" + (full ? "" : " — older snapshots only saved the 40 biggest programs"));
+                if (changed.Count == 0) result.Items.Add(new ListViewItem("   No program changed by " + ProgramThresholdMB + " MB or more.") { ForeColor = Theme.Muted });
+                foreach (var c in changed.Take(60))
+                    Row(c.n + (c.a < 0.5 ? "   (started)" : c.b < 0.5 ? "   (closed)" : ""), c.a, c.b, true, true);
+
+                summary.Text = Summary(x, y, sx, sy, changed.Select(c => Tuple.Create(c.n, c.b - c.a)).ToList());
+                double ux = x.Num("UptimeMin"), uy = y.Num("UptimeMin");
+                bool differ = Math.Abs(ux - uy) > 30 && uy < ux + 5; // a restart in between, or very different times after boot
+                note.ForeColor = differ ? Theme.Warn : Theme.Muted;
+                note.Text = uy < ux
+                    ? "The PC was restarted between these snapshots (" + ux.ToString("0") + " vs " + uy.ToString("0") + " min after start-up). Memory grows after start-up, so compare programs rather than totals."
+                    : "Taken " + ux.ToString("0") + " and " + uy.ToString("0") + " minutes after the PC started.";
+            }
+            catch (Exception ex) { summary.Text = "Couldn't read one of these snapshots: " + ex.Message; }
+            finally { result.EndUpdate(); Theme.FillColumn(result); }
+        }
+
+        /// <summary>One plain sentence (or two) saying what changed between the snapshots.</summary>
+        static string Summary(Dictionary<string, object> x, Dictionary<string, object> y, Dictionary<string, object> sx, Dictionary<string, object> sy, List<Tuple<string, double>> programs)
+        {
+            DateTime tx, ty;
+            bool times = DateTime.TryParse(x.Str("Time"), out tx) & DateTime.TryParse(y.Str("Time"), out ty);
+            string span = "";
+            if (times)
+            {
+                var d = ty - tx;
+                string len = Math.Abs(d.TotalMinutes) < 1 ? "less than a minute" : Math.Abs(d.TotalHours) < 1 ? (int)Math.Abs(d.TotalMinutes) + " min" :
+                             Math.Abs(d.TotalDays) < 1 ? (int)Math.Abs(d.TotalHours) + " h " + Math.Abs(d.Minutes) + " min" : (int)Math.Abs(d.TotalDays) + " days";
+                span = d.TotalSeconds < 0 ? " (note: “Before” was taken " + len + " after “After”)" : " over " + len;
+            }
+            double a = sx.Num("UsedMB"), b = sy.Num("UsedMB"), delta = b - a;
+            string s = Math.Abs(delta) < 50
+                ? "Memory in use stayed about the same (" + Theme.MB(b) + ")" + span + "."
+                : "Memory in use went " + (delta < 0 ? "down" : "up") + " by " + Theme.MB(Math.Abs(delta)) + " (from " + Theme.MB(a) + " to " + Theme.MB(b) + ")" + span + ".";
+            var drop = programs.Where(p => p.Item2 < 0).OrderBy(p => p.Item2).FirstOrDefault();
+            var rise = programs.Where(p => p.Item2 > 0).OrderByDescending(p => p.Item2).FirstOrDefault();
+            var parts = new List<string>();
+            if (drop != null) parts.Add("biggest drop: " + drop.Item1 + " (" + Theme.Delta(drop.Item2) + ")");
+            if (rise != null) parts.Add("biggest rise: " + rise.Item1 + " (" + Theme.Delta(rise.Item2) + ")");
+            if (parts.Count > 0) s += "  " + char.ToUpper(parts[0][0]) + string.Join(", ", parts).Substring(1) + ".";
+            return s;
+        }
+
+        static Dictionary<string, double> Programs(Dictionary<string, object> snap)
+        {
+            var res = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            var list = snap.ContainsKey("Programs") ? snap.List("Programs") : snap.List("Top");
+            foreach (var p in list) { string n = p.Str("Name"); if (n == null) continue; double v; res.TryGetValue(n, out v); res[n] = v + p.Num("PrivMB"); }
+            return res;
+        }
+
+        static double Val(Dictionary<string, double> d, string k) { double v; return d.TryGetValue(k, out v) ? v : 0; }
+
+        void Section(string title)
+        {
+            if (result.Items.Count > 0) result.Items.Add(new ListViewItem(""));
+            result.Items.Add(new ListViewItem(title) { Font = Theme.Bold, ForeColor = Theme.Info });
         }
 
         void Row(string name, double a, double b, bool lowerIsBetter, bool mb)
         {
-            var it = new ListViewItem(new[] { name, mb ? Theme.MB(a) : a.ToString("0"), mb ? Theme.MB(b) : b.ToString("0"), mb ? Theme.Delta(b - a) : (b - a).ToString("+0;−0;0") }) { UseItemStyleForSubItems = false };
+            var it = new ListViewItem(new[] { "   " + name, mb ? Theme.MB(a) : a.ToString("0"), mb ? Theme.MB(b) : b.ToString("0"), mb ? Theme.Delta(b - a) : (b - a).ToString("+0;−0;0") }) { UseItemStyleForSubItems = false };
             it.SubItems[3].ForeColor = Ui.ChangeColor(b - a, lowerIsBetter);
             result.Items.Add(it);
         }

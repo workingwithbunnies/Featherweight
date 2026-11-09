@@ -139,7 +139,14 @@ namespace Featherweight
             foreach (var kv in thirdParty)
             {
                 bool signedOk = Native.HasValidSignature(kv.Key);
-                if (!signedOk)
+                if (!signedOk && string.Equals(kv.Key, System.Windows.Forms.Application.ExecutablePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Honest, but not a warning: it's the program doing the check, and the user chose to run it.
+                    Add(f, Severity.Info, A, "Featherweight itself isn't digitally signed yet",
+                        kv.Key + "\r\n\r\nFeatherweight is free and open source, and code signing is planned. Until then Windows can't confirm who made it, " +
+                        "so only use copies downloaded from the project's GitHub page.");
+                }
+                else if (!signedOk)
                 {
                     unsigned++;
                     Add(f, Severity.Warning, A, "Unsigned program running: " + Path.GetFileName(kv.Key),
@@ -148,8 +155,9 @@ namespace Featherweight
                 else if (UserWritable.IsMatch(kv.Key))
                     Add(f, Severity.Info, A, "Runs from a user folder: " + Path.GetFileName(kv.Key), kv.Key + "\r\nSigned by: " + Signer(kv.Key));
             }
-            if (unsigned == 0) Add(f, Severity.OK, A, "All " + thirdParty.Count + " non-Windows programs are validly signed",
-                string.Join("\r\n", thirdParty.Select(kv => kv.Key).OrderBy(x => x)));
+            var others = thirdParty.Where(kv => !string.Equals(kv.Key, System.Windows.Forms.Application.ExecutablePath, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (unsigned == 0) Add(f, Severity.OK, A, "All " + others.Count + " other non-Windows programs are validly signed",
+                string.Join("\r\n", others.Select(kv => kv.Key).OrderBy(x => x)));
         }
 
         static string Signer(string path)

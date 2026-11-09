@@ -26,6 +26,8 @@ Only the latest release receives security fixes.
 
 To make reviewing easier:
 - It changes only what's listed in the Optimize page's "What it changes" section, and saves the original values first.
-- Its only network request is an optional update check (at most once a day) to `api.github.com`, asking for the latest
-  release. The user chooses it on first start and can turn it off in Settings. No telemetry. It never downloads or installs anything by itself.
+- Its only network requests are an optional update check (at most once a day): `api.github.com` for the latest release,
+  and `raw.githubusercontent.com` for the newest `knowledge.json` (item descriptions, text only). The user chooses it on first
+  start and can turn it off in Settings. No telemetry; nothing about the PC is sent. It never downloads or installs programs.
+  A downloaded `knowledge.json` can only describe items: it can't mark anything Recommended or unlock driver helpers.
 - It doesn't install drivers or services, and doesn't run at startup.

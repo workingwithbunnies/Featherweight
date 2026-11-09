@@ -50,6 +50,6 @@ $opt = if ($Configuration -eq 'Debug') { '/debug+', '/optimize-', '/define:DEBUG
 
 & $csc /nologo /target:winexe /platform:x64 /langversion:latest /nowarn:1701,1702 /warnaserror- @opt `
   "/out:$out\Featherweight.exe" "/win32manifest:$src\app.manifest" "/win32icon:$src\app.ico" `
-  "/resource:$src\catalog.json,Featherweight.catalog.json" @refs @sources
+  "/resource:$src\catalog.json,Featherweight.catalog.json" "/resource:$src\knowledge.json,Featherweight.knowledge.json" @refs @sources
 if ($LASTEXITCODE -ne 0) { throw "Build failed (exit $LASTEXITCODE)" }
 "Built $out\Featherweight.exe  (version $info)"

@@ -12,7 +12,7 @@ improvements proactively. Be fully transparent about limitations and anything un
 - C# on **.NET Framework 4.8** (built into Windows), **WinForms built in code** (no designer/XAML), x64.
 - No .NET SDK and no .csproj: `build.ps1` calls Visual Studio's Roslyn `csc.exe` (found via vswhere) and writes
   `artifacts\Featherweight.exe`. Version comes from `version.txt`, or `$env:FW_VERSION` in CI.
-- `src/Featherweight/catalog.json` is embedded in the exe as resource `Featherweight.catalog.json`.
+- `src/Featherweight/catalog.json` and `knowledge.json` are embedded as resources `Featherweight.catalog.json` / `Featherweight.knowledge.json`.
 - CI: `.github/workflows/build.yml` (every push/PR, uploads the exe as an artifact) and `release.yml`
   (tag `vX.Y.Z` → build, SHA-256, **draft** release with that version's CHANGELOG section).
 
@@ -23,6 +23,9 @@ improvements proactively. Be fully transparent about limitations and anything un
 | `App.cs` | `Paths` (data in `%LocalAppData%\Featherweight`, or next to the exe if a `portable` file exists), `Admin` (elevation, signed-in user SID), `Snapshots`, `Program.Main` |
 | `PlanEngine.cs` | `Engine`: apply/check/restore actions (service, registry, task, cert), backups (`backup-*.json`), `RestoreItem` |
 | `Catalog.cs` | Loads catalog (+ user `custom-optimizations.json`), detection, per-PC verdicts, Optimize / Restore default |
+| `Discovery.cs` | Finds non-catalog background software on any PC (services, startup apps, startup tasks, Store apps) as "Not reviewed" items; `Publisher` = brand from signature / file details |
+| `Facts.cs` | Offline, assumption-free description of each found item: maker's own text, product, triggers, driver class, live behaviour |
+| `Knowledge.cs` | Loads `knowledge.json` (our reviewed descriptions, embedded; newer copy downloadable), matches found items by stable ids |
 | `Probes.cs` | Per-PC questions used by catalog `checks` (Hyper-V VMs, firmware via Windows Update, phone paired) |
 | `OptimizePage.cs`, `Pages.cs`, `Welcome.cs` | UI pages; `MainForm.cs` = sidebar, banners, update check |
 | `Settings.cs` | `settings.json` and System Restore point creation |
@@ -44,7 +47,10 @@ Catalog format and contribution rules: `docs/CATALOG.md`. Roadmap: `docs/ROADMAP
 
 - Never put user names, PC names, emails or paths with user names in code, docs, screenshots or logs.
   On-screen paths use `Paths.Display`; anything exported goes through `Privacy.Redact`.
-- Only network request: the optional update check (`Updates.Check`). No telemetry.
+- Only network requests: the optional update check (`Updates.Check`) and, with the same opt-in, downloading the newest
+  `knowledge.json` from GitHub (`Knowledge.TryUpdate`). Nothing about the PC is sent. No telemetry.
+- No AI services and no server of our own, ever (maintainer decision): descriptions come from facts read on the PC
+  (`Facts.cs`) plus the knowledge base we write ourselves (`knowledge.json`, `docs/KNOWLEDGE.md`).
 
 ## Workflow
 

@@ -155,7 +155,7 @@
       "processes": ["CrossDeviceResume"],
       "detect": { "file": "%SystemRoot%\\SystemApps\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\CrossDeviceResume.exe" },
       "actions": [
-        { "type": "registry", "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CrossDeviceResume\\Configuration", "name": "IsResumeAllowed", "kind": "DWord", "value": 0 }
+        { "type": "registry", "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CrossDeviceResume\\Configuration", "name": "IsResumeAllowed", "kind": "DWord", "value": 0, "label": "Windows setting “Resume apps from your phone” → off" }
       ]
     },
     {
@@ -164,7 +164,7 @@
       "estimateMB": 0, "risk": "Safe",
       "processes": [],
       "actions": [
-        { "type": "registry", "path": "HKCU:\\Software\\Policies\\Microsoft\\Windows\\Explorer", "name": "DisableSearchBoxSuggestions", "kind": "DWord", "value": 1 }
+        { "type": "registry", "path": "HKCU:\\Software\\Policies\\Microsoft\\Windows\\Explorer", "name": "DisableSearchBoxSuggestions", "kind": "DWord", "value": 1, "label": "Windows setting “Show web results in Start search” → off" }
       ]
     },
 
