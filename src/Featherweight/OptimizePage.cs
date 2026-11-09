@@ -56,7 +56,7 @@ namespace Featherweight
             var split = new SplitContainer { Dock = DockStyle.Fill, SplitterWidth = 16, BackColor = Theme.Bg, FixedPanel = FixedPanel.Panel2 };
             split.Panel1.Controls.Add(list);
             split.Panel2.Controls.Add(detail);
-            split.SizeChanged += (s, e) => { if (split.Width > 760) split.SplitterDistance = split.Width - 350; };
+            split.SizeChanged += (s, e) => { if (split.Width > Theme.S(760)) split.SplitterDistance = split.Width - Theme.S(350); };
 
             log.Visible = false; log.Height = 130;
             toggleLog.Click += (s, e) => ShowLog(!log.Visible);

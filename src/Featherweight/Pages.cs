@@ -16,10 +16,10 @@ namespace Featherweight
             var p = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Bg };
             body.Dock = DockStyle.Fill;
             p.Controls.Add(body);
-            p.Controls.Add(new Label { Text = title, Font = Theme.H2, Dock = DockStyle.Top, Height = 30, ForeColor = Theme.Text });
+            p.Controls.Add(new Label { Text = title, Font = Theme.H2, Dock = DockStyle.Top, Height = Theme.S(30), ForeColor = Theme.Text });
             return p;
         }
-        public static Control Spacer(int h) { return new Panel { Dock = DockStyle.Top, Height = h, BackColor = Theme.Bg }; }
+        public static Control Spacer(int h) { return new Panel { Dock = DockStyle.Top, Height = Theme.S(h), BackColor = Theme.Bg }; }
         public static void RightAlign(ListView lv, params int[] cols) { foreach (var c in cols) lv.Columns[c].TextAlign = HorizontalAlignment.Right; }
 
         public static string StateText(ItemState s)
@@ -82,7 +82,7 @@ namespace Featherweight
             split.Panel2.Controls.Add(Ui.Section("Top processes", top));
             split.SizeChanged += (s, e) => { if (split.Width > 200) split.SplitterDistance = split.Width / 2 - 8; };
 
-            var cards = new TableLayoutPanel { Dock = DockStyle.Top, Height = 132, ColumnCount = 4, RowCount = 1, BackColor = Theme.Bg };
+            var cards = new TableLayoutPanel { Dock = DockStyle.Top, Height = Theme.S(132), ColumnCount = 4, RowCount = 1, BackColor = Theme.Bg };
             for (int i = 0; i < 4; i++) cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
             cards.Controls.Add(inUse, 0, 0); cards.Controls.Add(avail, 1, 0); cards.Controls.Add(commit, 2, 0); cards.Controls.Add(kernel, 3, 0);
             kernel.Margin = new Padding(0, 0, 0, 12);
@@ -207,7 +207,7 @@ namespace Featherweight
             Controls.Add(row);
             Controls.Add(log);
             Controls.Add(Theme.Header("Backups / Undo", "Each time changes are applied, the original settings are saved here. Undo puts them back (newest first if you undo several)."));
-            log.Height = 120;
+            log.Height = Theme.S(120);
         }
 
         public override void OnShow() { Reload(); }
@@ -260,9 +260,9 @@ namespace Featherweight
     // ===================================================================== Snapshots
     class SnapshotsPage : Page
     {
-        readonly TextBox label = new TextBox { Width = 260, Margin = new Padding(0, 3, 10, 0) };
-        readonly ComboBox before = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300, Margin = new Padding(0, 3, 10, 0) };
-        readonly ComboBox after = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300, Margin = new Padding(0, 3, 10, 0) };
+        readonly TextBox label = new TextBox { Width = Theme.S(260), Margin = new Padding(0, 3, 10, 0) };
+        readonly ComboBox before = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = Theme.S(300), Margin = new Padding(0, 3, 10, 0) };
+        readonly ComboBox after = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = Theme.S(300), Margin = new Padding(0, 3, 10, 0) };
         readonly ListView result = Theme.List("What", -1, "Before", 120, "After", 120, "Change", 120);
         readonly Label summary = new Label { Dock = DockStyle.Top, AutoSize = true, Font = Theme.Bold, ForeColor = Theme.Text, Padding = new Padding(0, 4, 0, 6), UseMnemonic = false };
         readonly Label note = Theme.Label("", Theme.Small, Theme.Muted);
@@ -460,7 +460,8 @@ namespace Featherweight
         readonly TextBox detail = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, Font = Theme.Base, BackColor = Color.FromArgb(250, 251, 253), BorderStyle = BorderStyle.FixedSingle, WordWrap = true, TabStop = false };
         readonly Button scan = Theme.Button("Run security check", true), save = Theme.Button("Save report"), fix = Theme.Button("Fix (backed up)", true), open = Theme.Button("Open in Windows");
         readonly Label status = Theme.Label("", Theme.Base, Theme.Muted);
-        readonly Label summary = new Label { Dock = DockStyle.Top, AutoSize = true, Font = Theme.H2, ForeColor = Theme.Muted, Padding = new Padding(0, 2, 0, 8), UseMnemonic = false,
+        // Before the first check this is a quiet hint in normal text; after it, the coloured result in bigger type.
+        readonly Label summary = new Label { Dock = DockStyle.Top, AutoSize = true, Font = Theme.Base, ForeColor = Theme.Muted, Padding = new Padding(0, 2, 0, 10), UseMnemonic = false,
                                              Text = "Run the check to see how this PC is protected. It only reads; nothing changes unless you click a fix." };
         List<Finding> findings = new List<Finding>();
 
@@ -485,7 +486,8 @@ namespace Featherweight
             split.Panel1.Controls.Add(list);
             split.Panel2.Controls.Add(Ui.Section("Details", detailPanel));
             split.SizeChanged += (s, e) => { if (split.Height > 200) split.SplitterDistance = (int)(split.Height * 0.55); };
-            summary.SizeChanged += (s, e) => summary.MaximumSize = new Size(Math.Max(200, Width - 60), 0);
+            // The summary wraps at the page's width (it used to keep the narrow width the page had when it was first built).
+            Resize += (s, e) => summary.MaximumSize = new Size(Math.Max(200, ClientSize.Width - Padding.Horizontal), 0);
 
             Controls.Add(split);
             Controls.Add(summary);
@@ -503,7 +505,7 @@ namespace Featherweight
         async Task Scan()
         {
             scan.Enabled = false; fix.Visible = open.Visible = false; list.Items.Clear(); detail.Text = "";
-            summary.Text = "Checking…"; summary.ForeColor = Theme.Muted;
+            summary.Font = Theme.H2; summary.Text = "Checking… this takes about a minute."; summary.ForeColor = Theme.Muted;
             findings = await Task.Run(() => SecurityScan.Run(p => BeginInvoke(new Action(() => status.Text = p))));
             list.BeginUpdate();
             foreach (var f in findings)
