@@ -9,13 +9,29 @@ namespace Featherweight
 {
     static class Theme
     {
-        public static readonly Color Sidebar = Color.FromArgb(24, 28, 36), SidebarHover = Color.FromArgb(38, 44, 56), SidebarActive = Color.FromArgb(48, 56, 72);
-        public static readonly Color SidebarText = Color.FromArgb(200, 206, 216);
-        public static readonly Color Accent = Color.FromArgb(0, 120, 212), AccentDark = Color.FromArgb(0, 95, 170);
-        public static readonly Color Bg = Color.FromArgb(244, 246, 249), Card = Color.White, Border = Color.FromArgb(222, 226, 232);
-        public static readonly Color Text = Color.FromArgb(28, 30, 34), Muted = Color.FromArgb(105, 112, 122);
-        public static readonly Color Ok = Color.FromArgb(16, 124, 16), Warn = Color.FromArgb(196, 98, 0), Bad = Color.FromArgb(196, 43, 28), Info = Color.FromArgb(0, 99, 177);
-        public static readonly Color Banner = Color.FromArgb(255, 244, 206), Commit = Color.FromArgb(230, 140, 20);
+        // The current theme's colours (see Themes.cs). Set by Use() before a window is built.
+        public static Palette Current;
+        public static Look Look;
+        public static Color Sidebar, SidebarTo, SidebarHover, SidebarActive, SidebarText, SidebarActiveText, SidebarMuted, SidebarBar;
+        public static Color Accent, Bg, Card, Border, Field, Text, Muted, Ok, Warn, Bad, Info, Banner, BannerText, InfoBanner, Commit;
+
+        /// <summary>Switches every colour and font to this theme. Windows built afterwards use it.</summary>
+        public static void Use(Palette p)
+        {
+            Current = p; Look = p.Look;
+            Sidebar = p.Sidebar; SidebarTo = p.SidebarTo; SidebarHover = p.SidebarHover; SidebarActive = p.SidebarActive;
+            SidebarText = p.SidebarText; SidebarActiveText = p.SidebarActiveText; SidebarMuted = p.SidebarMuted; SidebarBar = p.SidebarBar;
+            Accent = p.Accent; Bg = p.Bg; Card = p.Card; Border = p.Border; Field = p.Field; Text = p.Text; Muted = p.Muted;
+            Ok = p.Ok; Warn = p.Warn; Bad = p.Bad; Info = p.Info; Banner = p.Banner; BannerText = p.BannerText; InfoBanner = p.InfoBanner; Commit = p.Commit;
+            Base = new Font(p.Face, 9.75f);
+            Small = new Font(p.Face, 8.75f);
+            Bold = new Font(p.BoldFace, 9.75f, p.BoldStyle);
+            H1 = new Font(p.BoldFace, 17f, p.BoldStyle);
+            H2 = new Font(p.BoldFace, 11.5f, p.BoldStyle);
+            Big = new Font(p.BoldFace, 22f, p.BoldStyle);
+        }
+
+        static Theme() { Use(Palettes.All[0]); }
 
         /// <summary>
         /// Display scale: 1.0 at 100 %, 1.25 at 125 %… Featherweight draws itself sharply at any scale (DPI-aware), so text
@@ -24,32 +40,31 @@ namespace Featherweight
         public static float Dpi = ReadDpi();
         static float ReadDpi() { try { using (var g = Graphics.FromHwnd(IntPtr.Zero)) return Math.Max(1f, g.DpiX / 96f); } catch { return 1f; } }
         public static int S(int px) { return (int)Math.Round(px * Dpi); }
+        public static Padding Pad(int l, int t, int r, int b) { return new Padding(S(l), S(t), S(r), S(b)); }
 
-        public static readonly Font Base = new Font("Segoe UI", 9.75f);
-        public static readonly Font Small = new Font("Segoe UI", 8.75f);
-        public static readonly Font Bold = new Font("Segoe UI Semibold", 9.75f);
-        public static readonly Font H1 = new Font("Segoe UI Semibold", 17f);
-        public static readonly Font H2 = new Font("Segoe UI Semibold", 11.5f);
-        public static readonly Font Big = new Font("Segoe UI Semibold", 22f);
+        public static Font Base, Small, Bold, H1, H2, Big;
         public static readonly Font Mono = new Font("Consolas", 9.5f);
 
         public static Button Button(string text, bool primary = false)
         {
-            var b = new Button
+            var p = Current;
+            var b = new ThemedButton
             {
-                Text = text, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlatStyle = FlatStyle.Flat,
+                Text = text, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlatStyle = FlatStyle.Flat, Primary = primary,
                 Font = primary ? Bold : Base, Padding = new Padding(10, 4, 10, 4), Margin = new Padding(0, 0, 8, 0),
-                BackColor = primary ? Accent : Card, ForeColor = primary ? Color.White : Text, Cursor = Cursors.Hand, UseVisualStyleBackColor = false
+                BackColor = primary ? p.PrimaryTop : p.ButtonTop, ForeColor = primary ? p.PrimaryText : p.ButtonText, Cursor = Cursors.Hand, UseVisualStyleBackColor = false
             };
-            b.FlatAppearance.BorderColor = primary ? Accent : Border;
-            b.FlatAppearance.MouseOverBackColor = primary ? AccentDark : Color.FromArgb(234, 238, 244);
+            if (Look == Look.Classic) b.Padding = new Padding(12, 5, 12, 5); // room for the bevel
+            b.FlatAppearance.BorderColor = primary ? p.PrimaryBorder : p.ButtonBorder;
+            b.FlatAppearance.MouseOverBackColor = primary ? p.PrimaryHover : p.ButtonHover;
             // Flat buttons with custom colours don't grey out by themselves; make disabled ones look disabled.
             b.EnabledChanged += (s, e) =>
             {
-                Color disabledBack = Color.FromArgb(226, 230, 236);
-                b.BackColor = b.Enabled ? (primary ? Accent : Card) : (primary ? disabledBack : Card);
-                b.FlatAppearance.BorderColor = b.Enabled ? (primary ? Accent : Border) : disabledBack;
+                b.BackColor = b.Enabled ? (primary ? p.PrimaryTop : p.ButtonTop) : (primary ? p.Disabled : p.ButtonTop);
+                b.ForeColor = b.Enabled ? (primary ? p.PrimaryText : p.ButtonText) : p.DisabledText;
+                b.FlatAppearance.BorderColor = b.Enabled ? (primary ? p.PrimaryBorder : p.ButtonBorder) : p.Disabled;
                 b.Cursor = b.Enabled ? Cursors.Hand : Cursors.Default;
+                b.Invalidate();
             };
             return b;
         }
@@ -80,8 +95,13 @@ namespace Featherweight
             var lv = new ListView
             {
                 View = View.Details, FullRowSelect = true, HideSelection = false, Dock = DockStyle.Fill, Font = Base,
-                BorderStyle = BorderStyle.FixedSingle, GridLines = false, HeaderStyle = ColumnHeaderStyle.Nonclickable
+                BorderStyle = BorderStyle.FixedSingle, GridLines = false, HeaderStyle = ColumnHeaderStyle.Nonclickable,
+                BackColor = Field, ForeColor = Text, OwnerDraw = true
             };
+            // Only the column headers are drawn by Featherweight (in the theme's style); rows are drawn by Windows as usual.
+            lv.DrawColumnHeader += (s, e) => Ui.PaintHeader(lv, e);
+            lv.DrawItem += (s, e) => e.DrawDefault = !(Current.Dark && e.Item.Selected);
+            lv.DrawSubItem += (s, e) => Ui.PaintSubItem(lv, e);
             for (int i = 0; i < columns.Length; i += 2)
             {
                 int w = (int)columns[i + 1];
@@ -99,7 +119,7 @@ namespace Featherweight
             var fill = lv.Columns.Cast<ColumnHeader>().FirstOrDefault(c => (c.Tag as string) == "fill");
             if (fill == null) return;
             int other = lv.Columns.Cast<ColumnHeader>().Where(c => c != fill).Sum(c => c.Width);
-            fill.Width = Math.Max(S(120), lv.ClientSize.Width - other - 4);
+            fill.Width = Math.Max(S(120), lv.ClientSize.Width - other); // up to the edge, so the themed header has no gap
         }
 
         public static TextBox LogBox()
@@ -107,7 +127,7 @@ namespace Featherweight
             return new TextBox
             {
                 Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Bottom, Height = 150,
-                Font = Mono, BackColor = Color.FromArgb(250, 251, 253), BorderStyle = BorderStyle.FixedSingle, WordWrap = false
+                Font = Mono, BackColor = Field, ForeColor = Text, BorderStyle = BorderStyle.FixedSingle, WordWrap = false
             };
         }
 
@@ -131,7 +151,7 @@ namespace Featherweight
         readonly Label caption, value, sub;
         public Card(string title)
         {
-            BackColor = Theme.Card; Padding = new Padding(14, 10, 14, 10); Margin = new Padding(0, 0, 12, 12); Dock = DockStyle.Fill;
+            BackColor = Ui.Rounds ? Theme.Bg : Theme.Card; Padding = Theme.Pad(14, 10, 14, 10); Margin = Theme.Pad(0, 0, 12, 12); Dock = DockStyle.Fill;
             ResizeRedraw = true; // otherwise the old border stays painted inside the card after the window grows
             caption = Theme.Label(title.ToUpper(), Theme.Small, Theme.Muted);
             value = Theme.Label("–", Theme.Big); value.Margin = new Padding(0, 2, 0, 2);
@@ -144,7 +164,7 @@ namespace Featherweight
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            using (var pen = new Pen(Theme.Border)) e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+            Ui.PaintFrame(this, e.Graphics);
         }
     }
 
@@ -153,7 +173,7 @@ namespace Featherweight
     {
         readonly List<double> used = new List<double>(), commit = new List<double>();
         const int Max = 180;
-        public Graph() { DoubleBuffered = true; ResizeRedraw = true; BackColor = Theme.Card; Height = 150; Dock = DockStyle.Top; Margin = new Padding(0, 0, 0, 12); }
+        public Graph() { DoubleBuffered = true; ResizeRedraw = true; BackColor = Theme.Current.GraphBack; Height = Theme.S(150); Dock = DockStyle.Top; Margin = new Padding(0, 0, 0, 12); }
 
         public void Push(double usedPct, double commitPct)
         {
@@ -164,24 +184,30 @@ namespace Featherweight
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            var g = e.Graphics; g.SmoothingMode = SmoothingMode.AntiAlias;
-            var r = new Rectangle(44, 26, Width - 58, Height - 38);
+            var g = e.Graphics; g.SmoothingMode = SmoothingMode.AntiAlias; var p = Theme.Current;
+            Func<int, int> k = Theme.S;
+            var r = new Rectangle(k(44), k(26), Width - k(58), Height - k(38));
             using (var border = new Pen(Theme.Border)) g.DrawRectangle(border, 0, 0, Width - 1, Height - 1);
-            using (var grid = new Pen(Color.FromArgb(236, 239, 243)))
-            using (var muted = new SolidBrush(Theme.Muted))
-                for (int p = 0; p <= 100; p += 25)
+            using (var grid = new Pen(p.GraphGrid))
+            using (var muted = new SolidBrush(p.GraphText))
+                for (int pct = 0; pct <= 100; pct += 25)
                 {
-                    int y = r.Bottom - r.Height * p / 100;
+                    int y = r.Bottom - r.Height * pct / 100;
                     g.DrawLine(grid, r.Left, y, r.Right, y);
-                    g.DrawString(p + "%", Theme.Small, muted, 8, y - 8);
+                    g.DrawString(pct + "%", Theme.Small, muted, k(8), y - k(8));
                 }
-            Draw(g, r, commit, Theme.Commit, false);
-            Draw(g, r, used, Theme.Accent, true);
-            using (var a = new SolidBrush(Theme.Accent)) using (var c = new SolidBrush(Theme.Commit)) using (var t = new SolidBrush(Theme.Text))
+            Draw(g, r, commit, p.GraphCommit, false);
+            Draw(g, r, used, p.GraphUsed, true);
+            using (var a = new SolidBrush(p.GraphUsed)) using (var c = new SolidBrush(p.GraphCommit)) using (var t = new SolidBrush(p.GraphText))
             {
-                g.FillRectangle(a, 46, 9, 10, 10); g.DrawString("Memory in use", Theme.Small, t, 60, 6);
-                g.FillRectangle(c, 170, 9, 10, 10); g.DrawString("Committed (of limit)", Theme.Small, t, 184, 6);
-                g.DrawString("last " + Max + " s", Theme.Small, new SolidBrush(Theme.Muted), Width - 80, 6);
+                const string usedLabel = "Memory in use", commitLabel = "Committed (of limit)";
+                string span = "last " + Max + " s";
+                int x = r.Left + k(2);
+                g.FillRectangle(a, x, k(9), k(10), k(10)); x += k(14);
+                g.DrawString(usedLabel, Theme.Small, t, x, k(6)); x += (int)g.MeasureString(usedLabel, Theme.Small).Width + k(14);
+                g.FillRectangle(c, x, k(9), k(10), k(10)); x += k(14);
+                g.DrawString(commitLabel, Theme.Small, t, x, k(6));
+                g.DrawString(span, Theme.Small, t, Width - g.MeasureString(span, Theme.Small).Width - k(10), k(6));
             }
         }
 
@@ -203,7 +229,7 @@ namespace Featherweight
     /// <summary>Base class for pages; OnShow runs every time the page is navigated to.</summary>
     class Page : UserControl
     {
-        public Page() { Dock = DockStyle.Fill; BackColor = Theme.Bg; Font = Theme.Base; Padding = new Padding(24, 18, 24, 18); }
+        public Page() { Dock = DockStyle.Fill; BackColor = Theme.Bg; ForeColor = Theme.Text; Font = Theme.Base; Padding = new Padding(24, 18, 24, 18); }
         public virtual void OnShow() { }
     }
 }

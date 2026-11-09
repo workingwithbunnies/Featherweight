@@ -22,6 +22,91 @@ namespace Featherweight
         public static Control Spacer(int h) { return new Panel { Dock = DockStyle.Top, Height = Theme.S(h), BackColor = Theme.Bg }; }
         public static void RightAlign(ListView lv, params int[] cols) { foreach (var c in cols) lv.Columns[c].TextAlign = HorizontalAlignment.Right; }
 
+        // ------------------------------------------------------------ theme drawing helpers
+        /// <summary>True for the themes whose cards have rounded corners (XP, Windows 7).</summary>
+        public static bool Rounds { get { return Theme.Look == Look.Luna || Theme.Look == Look.Aero; } }
+
+        public static System.Drawing.Drawing2D.GraphicsPath Rounded(RectangleF r, float radius)
+        {
+            float d = Math.Min(radius * 2, Math.Min(r.Width, r.Height));
+            var p = new System.Drawing.Drawing2D.GraphicsPath();
+            if (d <= 0) { p.AddRectangle(r); return p; }
+            p.AddArc(r.X, r.Y, d, d, 180, 90); p.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+            p.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90); p.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+            p.CloseFigure();
+            return p;
+        }
+
+        /// <summary>Windows 95/98 style 3D edge: light top-left and dark bottom-right (raised), or the other way round (sunken).</summary>
+        public static void Bevel(Graphics g, Rectangle r, bool raised)
+        {
+            Color outerLight = raised ? Color.White : Color.FromArgb(128, 128, 128), outerDark = raised ? Color.Black : Color.White;
+            Color innerLight = raised ? Color.FromArgb(223, 223, 223) : Color.Black, innerDark = raised ? Color.FromArgb(128, 128, 128) : Color.FromArgb(223, 223, 223);
+            int x = r.X, y = r.Y, w = r.Width - 1, h = r.Height - 1;
+            using (var p = new Pen(outerLight)) { g.DrawLine(p, x, y, x + w - 1, y); g.DrawLine(p, x, y, x, y + h - 1); }
+            using (var p = new Pen(outerDark)) { g.DrawLine(p, x, y + h, x + w, y + h); g.DrawLine(p, x + w, y, x + w, y + h); }
+            using (var p = new Pen(innerLight)) { g.DrawLine(p, x + 1, y + 1, x + w - 2, y + 1); g.DrawLine(p, x + 1, y + 1, x + 1, y + h - 2); }
+            using (var p = new Pen(innerDark)) { g.DrawLine(p, x + 1, y + h - 1, x + w - 1, y + h - 1); g.DrawLine(p, x + w - 1, y + 1, x + w - 1, y + h - 1); }
+        }
+
+        /// <summary>The frame around a card or panel in the current theme: thin line, bevel, or rounded outline.</summary>
+        public static void PaintFrame(Control c, Graphics g)
+        {
+            if (Theme.Look == Look.Classic) { Bevel(g, c.ClientRectangle, true); return; }
+            if (Rounds)
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                using (var bg = new SolidBrush(c.Parent != null ? c.Parent.BackColor : Theme.Bg)) g.FillRectangle(bg, c.ClientRectangle);
+                using (var path = Rounded(new RectangleF(0.5f, 0.5f, c.Width - 1.5f, c.Height - 1.5f), Theme.S(6)))
+                {
+                    using (var fill = new SolidBrush(Theme.Card)) g.FillPath(fill, path);
+                    using (var pen = new Pen(Theme.Border)) g.DrawPath(pen, path);
+                }
+                return;
+            }
+            using (var pen = new Pen(Theme.Border)) g.DrawRectangle(pen, 0, 0, c.Width - 1, c.Height - 1);
+        }
+
+        /// <summary>
+        /// Rows are drawn by Windows, except selected rows in dark themes: Windows would paint them light grey when the list
+        /// isn't focused, which is hard to read on a dark background.
+        /// </summary>
+        public static void PaintSubItem(ListView lv, DrawListViewSubItemEventArgs e)
+        {
+            if (!Theme.Current.Dark || !e.Item.Selected) { e.DrawDefault = true; return; }
+            using (var b = new SolidBrush(Theme.Current.Select)) e.Graphics.FillRectangle(b, e.Bounds);
+            bool itemStyle = e.Item.UseItemStyleForSubItems || e.ColumnIndex == 0;
+            var font = itemStyle ? e.Item.Font : e.SubItem.Font;
+            var color = itemStyle ? e.Item.ForeColor : e.SubItem.ForeColor;
+            if (color == lv.ForeColor || color == SystemColors.WindowText) color = Theme.Text;
+            var align = lv.Columns[e.ColumnIndex].TextAlign;
+            var flags = TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix |
+                        (align == HorizontalAlignment.Right ? TextFormatFlags.Right : align == HorizontalAlignment.Center ? TextFormatFlags.HorizontalCenter : TextFormatFlags.Left);
+            var r = new Rectangle(e.Bounds.X + Theme.S(4), e.Bounds.Y, e.Bounds.Width - Theme.S(8), e.Bounds.Height);
+            TextRenderer.DrawText(e.Graphics, e.SubItem.Text, font, r, color, flags);
+        }
+
+        /// <summary>List column headers in the theme's style (Windows draws the rows).</summary>
+        public static void PaintHeader(ListView lv, DrawListViewColumnHeaderEventArgs e)
+        {
+            var p = Theme.Current; var g = e.Graphics; var r = e.Bounds;
+            if (Theme.Look == Look.Classic)
+            {
+                using (var face = new SolidBrush(p.HeaderTop)) g.FillRectangle(face, r);
+                Bevel(g, r, true);
+            }
+            else
+            {
+                using (var b = new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(r.X, r.Y - 1, r.Width, r.Height + 2), p.HeaderTop, p.HeaderBottom, 90f)) g.FillRectangle(b, r);
+                using (var line = new Pen(Theme.Border)) { g.DrawLine(line, r.Left, r.Bottom - 1, r.Right, r.Bottom - 1); g.DrawLine(line, r.Right - 1, r.Top + Theme.S(4), r.Right - 1, r.Bottom - Theme.S(5)); }
+                if (Theme.Look == Look.Luna) using (var line = new Pen(Color.FromArgb(214, 210, 194), 2f)) g.DrawLine(line, r.Left, r.Bottom - 2, r.Right, r.Bottom - 2);
+            }
+            var flags = TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix |
+                        (e.Header.TextAlign == HorizontalAlignment.Right ? TextFormatFlags.Right : TextFormatFlags.Left);
+            var tr = new Rectangle(r.X + Theme.S(6), r.Y, r.Width - Theme.S(12), r.Height);
+            TextRenderer.DrawText(g, e.Header.Text, lv.Font, tr, p.HeaderText, flags);
+        }
+
         public static string StateText(ItemState s)
         {
             switch (s) { case ItemState.Applied: return "Applied"; case ItemState.NotApplied: return "Not applied"; case ItemState.NotFound: return "Not on this PC"; default: return "Error"; }
@@ -92,6 +177,7 @@ namespace Featherweight
             cleanBtn.Margin = new Padding(0); moreBtn.Margin = new Padding(1, 0, 0, 0); moreBtn.Padding = new Padding(6, 4, 6, 4);
             buttons.Controls.Add(cleanBtn); buttons.Controls.Add(moreBtn);
             var menu = new ContextMenuStrip { Font = Theme.Base, ShowImageMargin = false };
+            if (Theme.Current.Dark) { menu.Renderer = new ToolStripProfessionalRenderer(new ThemeMenuColors()); menu.ForeColor = Theme.Text; }
             menu.Items.Add("Quick clean (recommended)", null, async (s, e) => await Clean(false));
             menu.Items.Add("Deep clean: also empty the file cache", null, async (s, e) => await Clean(true));
             menu.Items.Add(new ToolStripSeparator());
@@ -110,6 +196,7 @@ namespace Featherweight
 
             timer.Tick += (s, e) => Tick();
             timer.Start();
+            Disposed += (s, e) => timer.Dispose(); // the window is rebuilt when the theme changes
             Tick();
         }
 
@@ -457,7 +544,7 @@ namespace Featherweight
     class SecurityPage : Page
     {
         readonly ListView list = Theme.List("Level", 90, "Area", 120, "Finding", -1);
-        readonly TextBox detail = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, Font = Theme.Base, BackColor = Color.FromArgb(250, 251, 253), BorderStyle = BorderStyle.FixedSingle, WordWrap = true, TabStop = false };
+        readonly TextBox detail = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill, Font = Theme.Base, BackColor = Theme.Field, ForeColor = Theme.Text, BorderStyle = BorderStyle.FixedSingle, WordWrap = true, TabStop = false };
         readonly Button scan = Theme.Button("Run security check", true), save = Theme.Button("Save report"), fix = Theme.Button("Fix (backed up)", true), open = Theme.Button("Open in Windows");
         readonly Label status = Theme.Label("", Theme.Base, Theme.Muted);
         // Before the first check this is a quiet hint in normal text; after it, the coloured result in bigger type.

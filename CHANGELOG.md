@@ -4,7 +4,16 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 
 ## [Unreleased]
 
+## [0.1.0-alpha] - 2026-11-09
+
+First public test version (alpha). Tested on two laptops so far (Dell G15, HP OMEN 16, both Windows 11); feedback from other PCs is very welcome.
+
 ### Added
+- **Themes** (Settings & about → Theme): six looks, switched with one click and remembered. *Featherweight* (the
+  standard look), *Classic 9x* (grey bevelled buttons, navy highlights and a green-on-black Task Manager style graph,
+  inspired by Windows 95/98), *XP Blue* (beige windows, a blue side pane, rounded buttons and a green main button,
+  inspired by Windows XP), *Frutiger Aero* (sky-blue glass and glossy buttons, inspired by Windows 7), *Midnight*
+  (dark mode) and *Synthwave* (neon pink and cyan on purple). Themes only change how the app looks.
 - Dashboard: click a company in "By company" to see its programs (how many copies of each are running and their
   memory); click again to close it.
 - Featherweight tidies its data folder on start: it keeps the 30 newest unnamed snapshots (named ones stay until you
@@ -82,6 +91,9 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
   grey text.
 - Export diagnostics: the dialog has even margins, each description lines up with its checkbox, the public-sharing
   warning is a soft yellow box instead of orange text, and the buttons sit on the right like in Windows' own dialogs.
+- Welcome screen and Export diagnostics at 150 % and above: they now grow with the display scale instead of keeping
+  their 100 % size with bigger text (which overlapped the header text, cut off "What it never does" and ran under the
+  taskbar). The welcome screen also gets wider if it would be taller than the screen, and scrolls as a last resort.
 - At display scales above 100 % (125 %, 150 %…) the sidebar, list columns and the Optimize details panel grow with the
   text, so the app name and words like "Recommended" or "Not optimized" are no longer cut off. Dashboard cards no
   longer show stray border lines after the window is resized.

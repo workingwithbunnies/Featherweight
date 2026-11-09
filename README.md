@@ -1,24 +1,28 @@
 <div align="center">
 
-<img src="docs/images/social-preview.png" alt="Featherweight: see what's using your RAM, switch off the background bloat, undo anything" width="820">
+<img src="docs/images/social-preview.png" alt="Featherweight: a free RAM cleaner and startup optimizer for Windows 10 and 11" width="820">
 
 # Featherweight
 
-**See what's using your PC's memory. Switch off the background bloat you don't need. Undo anything, any time.**
+**A free, open-source RAM cleaner and startup optimizer for Windows 10 and 11.**<br>
+See what's using your PC's memory, switch off the background bloat you don't need, and undo anything, any time.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Windows 10 & 11](https://img.shields.io/badge/Windows-10%20(22H2)%20%7C%2011-0078D4)
-![Status: early development](https://img.shields.io/badge/status-early%20development-orange)
+[![Latest version](https://img.shields.io/github/v/release/workingwithbunnies/Featherweight?include_prereleases&label=download&color=0078D4)](../../releases)
+![Status: alpha](https://img.shields.io/badge/status-alpha%20(testing)-orange)
 ![No telemetry](https://img.shields.io/badge/telemetry-none-brightgreen)
 
-[**Download**](../../releases/latest) · [Features](#features) · [Is it safe?](#is-it-safe) · [FAQ](#faq) · [Roadmap](docs/ROADMAP.md) · [Report a problem](../../issues/new/choose)
+[**Download**](../../releases) · [Features](#features) · [Is it safe?](#is-it-safe) · [Help test](#help-test-the-alpha) · [FAQ](#faq) · [Report a problem](../../issues/new/choose)
 
 </div>
 
 ---
 
 > [!NOTE]
-> Featherweight is in **early development**. The first public release is being tested. Feedback is very welcome!
+> This is an **alpha**: the first public test version. It has been used and tested on two laptops (a Dell and an HP)
+> and hasn't met many other PCs yet. Everything it changes is backed up and undoable, but expect rough edges, and
+> please [tell us how it went on your PC](#help-test-the-alpha).
 
 ## Why Featherweight?
 
@@ -31,6 +35,10 @@ Featherweight shows you exactly what's running and **how much memory each thing 
 
 On the laptop it was developed on, the background apps it found were using about **1 GB of memory all the time**.
 Results depend entirely on what's installed on your PC.
+
+People use it to **free up RAM before gaming**, **stop bloatware and startup apps** from running in the background,
+**see which apps use the most memory**, and **check their PC's security settings**, all in one small app with no
+installer, no ads and no account.
 
 ## Features
 
@@ -72,6 +80,13 @@ It isn't an antivirus: Microsoft Defender (or your own antivirus) does the scann
 ### 📸 Snapshots
 Save a snapshot of memory use and compare two, e.g. before and after a change.
 
+### 🎨 Six themes
+<img src="docs/images/themes.png" alt="The Dashboard in six themes: Featherweight, Classic 9x, XP Blue, Frutiger Aero, Midnight and Synthwave" width="820">
+
+Pick a look in **Settings & about → Theme**: *Featherweight* (standard), *Classic 9x* (inspired by Windows 95/98, with a
+green-on-black graph), *XP Blue* (inspired by Windows XP), *Frutiger Aero* (inspired by Windows 7), *Midnight* (dark
+mode) and *Synthwave* (neon). It switches straight away and is remembered.
+
 ## Is it safe?
 
 Featherweight changes Windows settings, so it's built around a few promises:
@@ -90,13 +105,17 @@ It's open source: anyone can read exactly what it does. Security issues can be r
 
 ## Download and run
 
-1. Go to [**Releases**](../../releases/latest) and download `Featherweight.exe`.
+1. Go to [**Releases**](../../releases) and download `Featherweight.exe` from the newest version.
 2. Double-click it. No installer is needed; it uses .NET Framework 4.8, which is built into Windows 10 (22H2) and 11.
 3. If Windows shows **"Windows protected your PC"**, click **More info → Run anyway**. This appears for new apps
    that don't have many downloads yet. Code signing is [on the roadmap](docs/ROADMAP.md).
 
 Featherweight opens as a normal user, so you can look around safely. When you optimize, undo or clean RAM,
 it asks to restart with administrator rights.
+
+**Check that your download is genuine (optional):** each release lists the SHA-256 checksum of `Featherweight.exe`.
+In PowerShell, run `Get-FileHash .\Featherweight.exe` in the download folder and compare the result with the one on
+the release page. If they match, the file is exactly the one GitHub built from this source code.
 
 **Where your data lives:** backups and logs are kept in `%LocalAppData%\Featherweight`.
 **Portable use** (e.g. on a USB stick): put an empty file named `portable` next to `Featherweight.exe`, and
@@ -108,15 +127,30 @@ everything stays in that folder.
 
 Nothing else is left behind: no services, no startup entries.
 
+## Help test the alpha
+
+Thank you for trying it! The most useful thing you can do is use it on **your** PC and tell us what happened,
+especially if it isn't a Dell or HP laptop, runs Windows 10, uses another display language, or uses display scaling
+above 100 %.
+
+1. Look around first (no admin needed): **Dashboard**, **Optimize** (does it find your PC's background apps, and are
+   the descriptions right?), **Security check**, and a few **themes**.
+2. If you like, try changing something: optimize one or two items, then **Restore default** to put them back.
+3. Tell us how it went with the [**Test report**](../../issues/new?template=test_report.yml) form. It takes two
+   minutes. Screenshots help a lot, and so does **Settings & about → Export diagnostics** (you choose what's in it;
+   your user and PC name are removed).
+
+Not on GitHub? Send the maintainer your notes and screenshots directly; that works too.
+
 ## FAQ
 
 <details>
 <summary><b>Do I need a Dell or a gaming laptop?</b></summary>
 
 No. Everything works on any Windows 10/11 PC. The Optimize page lists background software from any brand that's
-on your PC. Detailed, reviewed advice currently covers Dell/Alienware, NVIDIA, Intel and Windows itself; other brands
-(ASUS, MSI, Lenovo, HP, Razer…) show as *Not reviewed* until they're added, and you can
-[ask for your PC's apps](../../issues/new/choose).
+on your PC. Reviewed advice currently covers Dell/Alienware, HP/OMEN, NVIDIA, AMD, Intel, Realtek and Windows itself,
+plus apps like Steam, the EA app and Google Play Games; anything else shows as *Not reviewed* until it's added, and you
+can [ask for your PC's apps](../../issues/new/choose).
 </details>
 
 <details>
@@ -126,6 +160,16 @@ Partly, and Featherweight is honest about it. Windows uses spare memory as a cac
 instantly when a program needs it. The cleaner does free memory right away (useful before launching something
 heavy), but programs pull back what they need over time. The lasting improvement comes from the **Optimize**
 page: apps that no longer start with Windows don't use memory at all.
+</details>
+
+<details>
+<summary><b>Why does Windows (or my antivirus) warn about it?</b></summary>
+
+Featherweight is new and not yet code-signed, so Windows SmartScreen shows *Windows protected your PC* until enough
+people have downloaded it (click **More info → Run anyway**). Some antivirus programs are also suspicious of any app
+that changes services and startup settings. The full source code is here for anyone to read, every release is built by
+GitHub from that code, and you can [check the checksum](#download-and-run). Code signing is on the
+[roadmap](docs/ROADMAP.md).
 </details>
 
 <details>

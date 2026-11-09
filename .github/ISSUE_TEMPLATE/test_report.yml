@@ -1,0 +1,69 @@
+name: Test report (alpha)
+description: Tried Featherweight on your PC? Tell us how it went, good or bad.
+title: "[Test] "
+labels: ["test report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing! Every PC is different, so even "everything worked" is useful.
+        **This page is public.** Please don't include your name, email or PC name in text or screenshots.
+
+  - type: input
+    id: pc
+    attributes:
+      label: Your PC
+      description: Brand and model, and whether it's a laptop or desktop.
+      placeholder: "Lenovo Legion 5 (laptop)"
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version, language and display scale
+      description: "Settings → System → About shows the version; Settings → System → Display shows the scale."
+      placeholder: "Windows 11 24H2, German, 125 %"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: tried
+    attributes:
+      label: What did you try?
+      options:
+        - label: Dashboard and Free up RAM
+        - label: Optimize (looked at the list)
+        - label: Optimize (changed something)
+        - label: Restore default / Backups and Undo
+        - label: Security check
+        - label: Snapshots
+        - label: Themes
+
+  - type: textarea
+    id: good
+    attributes:
+      label: What worked well?
+
+  - type: textarea
+    id: bad
+    attributes:
+      label: What went wrong or looked odd?
+      description: Anything that was wrong, confusing, cut off or slow. Screenshots help a lot (drag them in here).
+
+  - type: textarea
+    id: apps
+    attributes:
+      label: Background apps it found (optional)
+      description: |
+        Helps add advice for your PC's brand. On the Optimize page, select an app and click **Copy for a report**, then paste here.
+        Or attach a file from **Settings & about → Export diagnostics** with "Background software" ticked.
+      render: text
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I checked that nothing personal (name, email, PC name) is in what I'm sharing.
+          required: true

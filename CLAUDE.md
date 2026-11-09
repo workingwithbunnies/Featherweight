@@ -33,6 +33,7 @@ improvements proactively. Be fully transparent about limitations and anything un
 | `Updates.cs`, `Diagnostics.cs` | GitHub release check; diagnostics export, `Privacy.Redact`, crash handling |
 | `SecurityScan.cs`, `SecurityChecks.cs` | Security check (read-only): Defender, certificates, startup, tasks, hijack points, network; Windows protections, updates, sign-in/sharing, browser extensions. Fixes go through the engine; Windows security settings only get an "Open in Windows" link |
 | `Native.cs`, `Memory.cs`, `Cleaner.cs`, `Json.cs`, `Ui.cs` | Win32 calls, memory figures, RAM cleaner, security sweep, JSON, theme/controls |
+| `Themes.cs` | Six palettes (every colour/font), `ThemedButton`, theme tiles, `ThemeApply` (text boxes, lists, dark scrollbars). `Theme.Use(palette)` runs before a window is built; switching rebuilds `MainForm` (`Rebuild`, loop in `Program.Main`) |
 
 Catalog format and contribution rules: `docs/CATALOG.md`. Roadmap: `docs/ROADMAP.md`.
 
@@ -61,6 +62,8 @@ Catalog format and contribution rules: `docs/CATALOG.md`. Roadmap: `docs/ROADMAP
   file and use `git commit -F <file>` (PowerShell mangles multi-line `-m`).
 - Update `CHANGELOG.md` under *Unreleased* for user-visible changes.
 - Releases: bump `version.txt`, move *Unreleased* to `## [x.y.z]`, tag `vx.y.z`, push the tag, then publish the draft.
+  Versions with a suffix (`0.1.0-alpha`, `0.1.0-alpha.2`, `0.2.0-beta`) become GitHub pre-releases; the update check
+  shows pre-releases only to people running a pre-release (`Updates.Check`, semantic-version compare in `Updates.Compare`).
 
 ## Testing tips (no test project yet)
 
@@ -72,6 +75,14 @@ Catalog format and contribution rules: `docs/CATALOG.md`. Roadmap: `docs/ROADMAP
 - Admin-only paths (service changes, full RAM cleaner, restore point creation) can't be tested without elevation;
   say so explicitly when reporting.
 - For `gh`/`git` with complex quoting, use Git Bash rather than PowerShell.
+
+## Display scale and themes
+
+- The app is system-DPI-aware and WinForms auto-scaling doesn't run for these code-built windows
+  (`AutoScaleMode.None`): every fixed pixel size goes through `Theme.S()` / `Theme.Pad()`.
+- Never hard-code colours or fonts: use `Theme.*` (or `Theme.Current.*` for palette-only fields) so all six themes work.
+- Simulate a scale off-screen by setting `Theme.Dpi` and swapping the `Theme` fonts via reflection before building a window;
+  call `Application.EnableVisualStyles()` in test scripts or list groups won't show.
 
 ## WinForms gotchas seen here
 

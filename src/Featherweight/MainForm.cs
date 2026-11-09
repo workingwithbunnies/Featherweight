@@ -11,6 +11,11 @@ namespace Featherweight
         readonly Panel pageHost, content;
         readonly Dictionary<string, Page> pages = new Dictionary<string, Page>();
         readonly Dictionary<string, Button> nav = new Dictionary<string, Button>();
+        string activeNav;
+
+        /// <summary>Set when the window closes only to be built again (theme change): the page to reopen.</summary>
+        public string ReloadPage { get; private set; }
+        static Rectangle? lastBounds; static FormWindowState lastState;
 
         // WinForms docks in reverse order of adding: add Fill controls first, then the edges.
         public MainForm(string startPage)
@@ -20,8 +25,9 @@ namespace Featherweight
             var screen = Screen.PrimaryScreen.WorkingArea;
             Size = new Size(Math.Min(Theme.S(1220), screen.Width), Math.Min(Theme.S(800), screen.Height));
             MinimumSize = new Size(Math.Min(Theme.S(1000), screen.Width), Math.Min(Theme.S(660), screen.Height));
-            StartPosition = FormStartPosition.CenterScreen; Font = Theme.Base; BackColor = Theme.Bg;
-            AutoScaleMode = AutoScaleMode.Dpi;
+            StartPosition = FormStartPosition.CenterScreen; Font = Theme.Base; BackColor = Theme.Bg; ForeColor = Theme.Text;
+            AutoScaleMode = AutoScaleMode.None; // sizes go through Theme.S
+            if (lastBounds != null) { StartPosition = FormStartPosition.Manual; Bounds = lastBounds.Value; WindowState = lastState; } // rebuilt after a theme change
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
             content = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Bg };
@@ -29,7 +35,14 @@ namespace Featherweight
             content.Controls.Add(pageHost);
             if (!Admin.IsAdmin) content.Controls.Add(Banner());
 
-            var sidebar = new Panel { Dock = DockStyle.Left, Width = Theme.S(212), BackColor = Theme.Sidebar };
+            var sidebar = new DoubleBufferedPanel { Dock = DockStyle.Left, Width = Theme.S(212), BackColor = Theme.Sidebar };
+            // Some themes have a gradient sidebar (XP, Windows 7, Synthwave); nav items are see-through on top of it.
+            sidebar.Paint += (s, e) =>
+            {
+                if (Theme.SidebarTo == Theme.Sidebar || sidebar.Height < 2) return;
+                using (var b = new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(0, -1, sidebar.Width, sidebar.Height + 2), Theme.Sidebar, Theme.SidebarTo, 90f))
+                    e.Graphics.FillRectangle(b, sidebar.ClientRectangle);
+            };
             Controls.Add(content);
             Controls.Add(sidebar);
 
@@ -43,7 +56,7 @@ namespace Featherweight
 
             var footer = new Label
             {
-                Dock = DockStyle.Bottom, Height = Theme.S(54), ForeColor = Color.FromArgb(130, 138, 150), Font = Theme.Small,
+                Dock = DockStyle.Bottom, Height = Theme.S(54), ForeColor = Theme.SidebarMuted, Font = Theme.Small, BackColor = Color.Transparent,
                 Padding = new Padding(20, 0, 10, 12), TextAlign = ContentAlignment.BottomLeft,
                 // No PC or user name here: people share screenshots in bug reports.
                 Text = (Admin.IsAdmin ? "● Administrator" : "○ Standard user") + "\nVersion " + AppVersion
@@ -57,11 +70,25 @@ namespace Featherweight
             var brand = new Label
             {
                 Dock = DockStyle.Top, Height = Theme.S(78), Text = "Featherweight", ForeColor = Color.White, Font = Theme.H1,
-                Padding = new Padding(18, 0, 0, 8), TextAlign = ContentAlignment.BottomLeft
+                Padding = new Padding(18, 0, 0, 8), TextAlign = ContentAlignment.BottomLeft, BackColor = Color.Transparent
             };
-            var tag = new Label { Dock = DockStyle.Top, Height = Theme.S(30), Text = "memory · startup · security", ForeColor = Color.FromArgb(130, 138, 150), Font = Theme.Small, Padding = new Padding(21, 0, 0, 0) };
-            sidebar.Controls.Add(tag);
-            sidebar.Controls.Add(brand);
+            var tag = new Label { Dock = DockStyle.Top, Height = Theme.S(30), Text = "memory · startup · security", ForeColor = Theme.SidebarMuted, Font = Theme.Small,
+                                  Padding = new Padding(21, 0, 0, 0), BackColor = Color.Transparent };
+            if (Theme.Current.BrandBand)
+            {   // Classic: the name on a title-bar band
+                var band = new DoubleBufferedPanel { Dock = DockStyle.Top, Height = Theme.S(96) };
+                band.Paint += (s, e) => { using (var b = new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(-1, 0, band.Width + 2, band.Height), Theme.Current.HeroFrom, Theme.Current.HeroTo, 0f)) e.Graphics.FillRectangle(b, band.ClientRectangle); };
+                brand.Height = Theme.S(64); tag.Height = Theme.S(32); tag.ForeColor = Color.FromArgb(220, 230, 245);
+                band.Controls.Add(tag); band.Controls.Add(brand);
+                sidebar.Controls.Add(Ui.Spacer(8));
+                sidebar.Controls.Add(band);
+            }
+            else
+            {
+                sidebar.Controls.Add(tag);
+                sidebar.Controls.Add(brand);
+            }
+            ThemeApply.To(this); // text boxes, lists and (dark themes) scrollbars
 
             ShowPage(startPage != null && pages.ContainsKey(startPage) ? startPage : "Dashboard");
             Shown += async (s, e) => await AutomaticUpdateCheck();
@@ -84,7 +111,7 @@ namespace Featherweight
         {
             var get = Theme.Button("See what's new", true);
             var later = Theme.Button("Not now");
-            var bar = BannerBar(Color.FromArgb(222, 236, 252), "Featherweight " + info.Version + " is available (you have " + AppVersion + ").", later, get);
+            var bar = BannerBar(Theme.InfoBanner, "Featherweight " + info.Version + " is available (you have " + AppVersion + ").", later, get);
             get.Click += (s, e) => { try { System.Diagnostics.Process.Start(info.Url); } catch { } };
             later.Click += (s, e) => { Settings.SkippedVersion = info.Version; Settings.Save(); bar.Visible = false; };
             return bar;
@@ -111,7 +138,7 @@ namespace Featherweight
             };
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             bar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            var lbl = new Label { AutoSize = true, Anchor = AnchorStyles.Left | AnchorStyles.Right, ForeColor = Theme.Text, UseMnemonic = false, Text = text, Margin = new Padding(0, 0, 12, 0) };
+            var lbl = new Label { AutoSize = true, Anchor = AnchorStyles.Left | AnchorStyles.Right, ForeColor = Theme.BannerText, UseMnemonic = false, Text = text, Margin = new Padding(0, 0, 12, 0) };
             bar.Controls.Add(lbl, 0, 0);
             for (int i = 0; i < buttons.Length; i++)
             {
@@ -123,6 +150,15 @@ namespace Featherweight
         }
 
         string CurrentPage { get { return pages.First(p => p.Value.Visible).Key; } }
+
+        /// <summary>Builds the window again in the current theme, on the same page and in the same place.</summary>
+        public void Rebuild()
+        {
+            ReloadPage = CurrentPage;
+            lastState = WindowState == FormWindowState.Minimized ? FormWindowState.Normal : WindowState;
+            lastBounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
+            Close();
+        }
 
         /// <summary>Version from build.ps1 (version.txt), without the "+commit" suffix.</summary>
         public static string AppVersion
@@ -141,16 +177,17 @@ namespace Featherweight
             var b = new Button
             {
                 Dock = DockStyle.Top, Height = Theme.S(42), Text = "    " + text, TextAlign = ContentAlignment.MiddleLeft, FlatStyle = FlatStyle.Flat,
-                ForeColor = Theme.SidebarText, BackColor = Theme.Sidebar, Font = Theme.Base, Cursor = Cursors.Hand, UseVisualStyleBackColor = false,
+                ForeColor = Theme.SidebarText, BackColor = Color.Transparent, Font = Theme.Base, Cursor = Cursors.Hand, UseVisualStyleBackColor = false,
                 UseMnemonic = false // show "&" literally ("Settings & about")
             };
             b.FlatAppearance.BorderSize = 0;
             b.FlatAppearance.MouseOverBackColor = Theme.SidebarHover;
+            b.FlatAppearance.MouseDownBackColor = Theme.SidebarActive;
             b.Click += (s, e) => ShowPage(key);
             b.Paint += (s, e) =>
             {
-                if (b.BackColor == Theme.SidebarActive)
-                    using (var br = new SolidBrush(Theme.Accent)) e.Graphics.FillRectangle(br, 0, 6, 4, b.Height - 12);
+                if (activeNav == key && Theme.Look != Look.Classic)
+                    using (var br = new SolidBrush(Theme.SidebarBar)) e.Graphics.FillRectangle(br, 0, Theme.S(6), Theme.S(4), b.Height - Theme.S(12));
             };
             nav[key] = b;
             return b;
@@ -162,8 +199,9 @@ namespace Featherweight
             foreach (var kv in nav)
             {
                 bool active = kv.Key == key;
-                kv.Value.BackColor = active ? Theme.SidebarActive : Theme.Sidebar;
-                kv.Value.ForeColor = active ? Color.White : Theme.SidebarText;
+                if (active) activeNav = key;
+                kv.Value.BackColor = active ? Theme.SidebarActive : Color.Transparent;
+                kv.Value.ForeColor = active ? Theme.SidebarActiveText : Theme.SidebarText;
                 kv.Value.Font = active ? Theme.Bold : Theme.Base;
             }
             pages[key].OnShow();

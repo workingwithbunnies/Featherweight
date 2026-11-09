@@ -1,4 +1,4 @@
-# Makes a release when a version tag (e.g. v0.1.0) is pushed:
+# Makes a release when a version tag (e.g. v0.1.0, or v0.1.0-alpha for a pre-release) is pushed:
 # builds on GitHub's servers, computes a SHA-256 checksum, and creates a DRAFT release
 # with the notes from CHANGELOG.md. Nothing is public until a maintainer clicks "Publish release".
 name: Release
@@ -48,5 +48,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Versions with a suffix (v0.1.0-alpha, v0.2.0-beta.1) are marked as pre-releases on GitHub.
+          $pre = if ('${{ github.ref_name }}' -like '*-*') { '--prerelease' } else { $null }
           gh release create '${{ github.ref_name }}' artifacts/Featherweight.exe artifacts/Featherweight.exe.sha256 `
-            --draft --title "Featherweight ${{ github.ref_name }}" --notes-file release-notes.md
+            --draft $pre --title "Featherweight ${{ github.ref_name }}" --notes-file release-notes.md

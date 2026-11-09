@@ -15,6 +15,7 @@ namespace Featherweight
         public static bool RestorePoints = true;    // System Restore point before changes
         public static string LastUpdateCheck;       // ISO time of the last automatic check
         public static string SkippedVersion;        // "Not now" on an update banner hides that version
+        public static string Theme = "featherweight"; // look of the app (Themes.cs)
 
         public static void Load()
         {
@@ -27,6 +28,7 @@ namespace Featherweight
                 RestorePoints = !d.ContainsKey("restorePoints") || d.Bool("restorePoints");
                 LastUpdateCheck = d.Str("lastUpdateCheck");
                 SkippedVersion = d.Str("skippedVersion");
+                if (!string.IsNullOrEmpty(d.Str("theme"))) Theme = d.Str("theme");
             }
             catch { } // a damaged settings file just means defaults
         }
@@ -37,7 +39,7 @@ namespace Featherweight
             {
                 Json.WriteFile(FilePath, new Dictionary<string, object> {
                     { "firstRunDone", FirstRunDone }, { "checkUpdates", CheckUpdates }, { "restorePoints", RestorePoints },
-                    { "lastUpdateCheck", LastUpdateCheck }, { "skippedVersion", SkippedVersion } });
+                    { "lastUpdateCheck", LastUpdateCheck }, { "skippedVersion", SkippedVersion }, { "theme", Theme } });
             }
             catch { }
         }

@@ -124,9 +124,17 @@ namespace Featherweight
             Paths.Ensure();
             System.Threading.Tasks.Task.Run(() => Housekeeping.Run()); // tidy old snapshots, undone backups and long logs
             Settings.Load();
+            Theme.Use(Palettes.Find(Settings.Theme));
             if (!Settings.FirstRunDone) using (var w = new WelcomeForm()) w.ShowDialog();
             string page = args.Where(a => a.StartsWith("--page=")).Select(a => a.Substring(7)).FirstOrDefault();
-            Application.Run(new MainForm(page));
+            // Changing the theme closes the window and builds it again on the same page.
+            while (true)
+            {
+                var form = new MainForm(page);
+                Application.Run(form);
+                if (form.ReloadPage == null) break;
+                page = form.ReloadPage;
+            }
         }
     }
 }
