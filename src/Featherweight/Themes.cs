@@ -332,6 +332,7 @@ namespace Featherweight
             }
         }
 
-        static void Dark(Control c) { try { SetWindowTheme(c.Handle, "DarkMode_Explorer", null); } catch { } }
+        // Lists use the dark "items view" style (light group titles, no column lines); everything else the dark Explorer style.
+        static void Dark(Control c) { try { SetWindowTheme(c.Handle, c is ListView ? "DarkMode_ItemsView" : "DarkMode_Explorer", null); } catch { } }
     }
 }

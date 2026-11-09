@@ -4,6 +4,10 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 
 ## [Unreleased]
 
+## [0.1.0-alpha] - 2026-11-09
+
+First public test version (alpha). Tested on two laptops so far (Dell G15, HP OMEN 16, both Windows 11); feedback from other PCs is very welcome.
+
 ### Added
 - **Themes** (Settings & about → Theme): six looks, switched with one click and remembered. *Featherweight* (the
   standard look), *Classic 9x* (grey bevelled buttons, navy highlights and a green-on-black Task Manager style graph,
