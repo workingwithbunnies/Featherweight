@@ -1,6 +1,7 @@
 # Makes a release when a version tag (e.g. v0.1.0, or v0.1.0-alpha for a pre-release) is pushed:
-# builds on GitHub's servers, computes a SHA-256 checksum, and creates a DRAFT release
-# with the notes from CHANGELOG.md. Nothing is public until a maintainer clicks "Publish release".
+# builds on GitHub's servers, records signed build provenance (proof that the exe was built here, from this
+# commit), computes a SHA-256 checksum, and creates a DRAFT release with the notes from CHANGELOG.md.
+# Nothing is public until a maintainer clicks "Publish release".
 name: Release
 
 on:
@@ -8,7 +9,9 @@ on:
     tags: ["v*.*.*"]
 
 permissions:
-  contents: write
+  contents: write       # create the release
+  id-token: write       # sign the build provenance (Sigstore, via GitHub)
+  attestations: write   # store it, so anyone can check a downloaded exe
 
 jobs:
   release:
@@ -21,6 +24,14 @@ jobs:
         env:
           FW_VERSION: ${{ github.ref_name }}
         run: ./build.ps1
+
+      # Anyone can then check a downloaded copy with:
+      #   gh attestation verify Featherweight.exe -R workingwithbunnies/Featherweight
+      # A modified or look-alike exe fails this check, even if someone publishes their own checksum for it.
+      - name: Build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: artifacts/Featherweight.exe
 
       - name: Checksum and release notes
         shell: powershell
@@ -40,6 +51,7 @@ jobs:
             $notes = @("See CHANGELOG.md for details.")
           }
           $notes += @("", "---", "**SHA-256** of ``Featherweight.exe``: ``$hash``",
+            "", "**Built by GitHub from this repository** (build provenance): check a download with ``gh attestation verify Featherweight.exe -R workingwithbunnies/Featherweight``",
             "", "Windows may show *Windows protected your PC* for new downloads: click **More info → Run anyway**.")
           $notes | Set-Content release-notes.md -Encoding utf8
 

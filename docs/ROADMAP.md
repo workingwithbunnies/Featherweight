@@ -40,7 +40,7 @@ No silent auto-updating at first, because that's a security-sensitive feature to
 **What:** one button that saves a text/zip report, with **user name and PC name removed**, so users can attach it to a GitHub issue.
 **Cost:** small. **Biggest payoff** for handling feedback.
 
-### 6. Code signing
+### 6. Code signing (applying; build provenance added in 0.1.0-alpha.3)
 **Why:** unsigned apps show a scary "Windows protected your PC" (SmartScreen) warning, and tools that change
 services/registry are often **falsely flagged by antivirus**. A signature proves the exe really comes from you.
 **Options:** [SignPath Foundation](https://signpath.org/) (free for open-source projects, needs an application),

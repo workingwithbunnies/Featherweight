@@ -18,6 +18,17 @@ Please include:
 You'll get a reply as soon as possible. Once a fix is released, the report can be published with credit to you
 (if you want).
 
+## Fake copies
+
+Featherweight is free and is **only** published on this repository's
+[Releases page](https://github.com/workingwithbunnies/Featherweight/releases). Copies offered on other websites, in
+ads, in someone else's zip file, or for money are not ours and may be malware dressed up as Featherweight.
+
+To check a file, compare its SHA-256 checksum with the release page, or verify its proof of origin with
+`gh attestation verify Featherweight.exe -R workingwithbunnies/Featherweight` (see the README).
+If you find a fake copy, please report it privately (Security tab → Report a vulnerability) with the link where you
+found it.
+
 ## Supported versions
 
 Only the latest release receives security fixes.

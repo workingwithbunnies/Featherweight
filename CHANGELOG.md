@@ -4,6 +4,20 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 
 ## [Unreleased]
 
+## [0.1.0-alpha.3] - 2026-11-10
+
+### Added
+- **Proof of origin for every download.** Each release's `Featherweight.exe` now comes with build provenance: a
+  record, signed by GitHub, that the file was built by this repository's own build system from its public source.
+  Anyone can check a download with `gh attestation verify Featherweight.exe -R workingwithbunnies/Featherweight`. A
+  look-alike or modified file fails the check, even if it comes with its own checksum.
+- The README and SECURITY.md say clearly that the only official download is this repository's Releases page, and how
+  to report fake copies. A code signing policy page (`docs/CODE_SIGNING.md`) was added for the code signing
+  application.
+
+### Changed
+- Nothing in the app itself: this version is about checking that a download is genuine.
+
 ## [0.1.0-alpha.2] - 2026-11-09
 
 ### Fixed
