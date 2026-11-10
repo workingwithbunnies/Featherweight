@@ -114,7 +114,7 @@ How releases are built and signed: [**Code signing policy**](docs/CODE_SIGNING.m
 1. Go to [**Releases**](../../releases) and download `Featherweight.exe` from the newest version.
 2. Double-click it. No installer is needed; it uses .NET Framework 4.8, which is built into Windows 10 (22H2) and 11.
 3. If Windows shows **"Windows protected your PC"**, click **More info → Run anyway**. This appears for new apps
-   that don't have many downloads yet. Featherweight is applying for code signing ([Code signing policy](docs/CODE_SIGNING.md)).
+   that don't have many downloads yet. Featherweight is applying for free code signing from the [SignPath Foundation](https://signpath.org) ([Code signing policy](docs/CODE_SIGNING.md)).
 
 Featherweight opens as a normal user, so you can look around safely. When you optimize, undo or clean RAM,
 it asks to restart with administrator rights.
