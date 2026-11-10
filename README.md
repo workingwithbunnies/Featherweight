@@ -105,17 +105,27 @@ It's open source: anyone can read exactly what it does. Security issues can be r
 
 ## Download and run
 
+> [!IMPORTANT]
+> **The only official download is this repository's [Releases page](../../releases)** (github.com/workingwithbunnies/Featherweight).
+> Featherweight is free. If you were offered it on another website, in a zip from someone else, or for money, don't
+> run that file, and please [let us know](SECURITY.md#fake-copies).
+
 1. Go to [**Releases**](../../releases) and download `Featherweight.exe` from the newest version.
 2. Double-click it. No installer is needed; it uses .NET Framework 4.8, which is built into Windows 10 (22H2) and 11.
 3. If Windows shows **"Windows protected your PC"**, click **More info → Run anyway**. This appears for new apps
-   that don't have many downloads yet. Code signing is [on the roadmap](docs/ROADMAP.md).
+   that don't have many downloads yet. Featherweight is [applying for code signing](docs/CODE_SIGNING.md).
 
 Featherweight opens as a normal user, so you can look around safely. When you optimize, undo or clean RAM,
 it asks to restart with administrator rights.
 
-**Check that your download is genuine (optional):** each release lists the SHA-256 checksum of `Featherweight.exe`.
-In PowerShell, run `Get-FileHash .\Featherweight.exe` in the download folder and compare the result with the one on
-the release page. If they match, the file is exactly the one GitHub built from this source code.
+**Check that your download is genuine (optional):**
+- **Checksum:** each release lists the SHA-256 checksum of `Featherweight.exe`. In PowerShell, run
+  `Get-FileHash .\Featherweight.exe` in the download folder and compare it with the one on the release page.
+- **Proof of origin** (from 0.1.0-alpha.3): every release exe comes with a record, signed by GitHub, that it was built
+  by this repository's own build system from its public source code. With the [GitHub CLI](https://cli.github.com)
+  installed, run `gh attestation verify Featherweight.exe -R workingwithbunnies/Featherweight`. It says
+  *Verification succeeded* for a genuine file. A modified or look-alike file fails, even if someone publishes their own
+  checksum next to it. You can also see the records on the [Attestations page](../../attestations).
 
 **Where your data lives:** backups and logs are kept in `%LocalAppData%\Featherweight`.
 **Portable use** (e.g. on a USB stick): put an empty file named `portable` next to `Featherweight.exe`, and
@@ -168,8 +178,8 @@ page: apps that no longer start with Windows don't use memory at all.
 Featherweight is new and not yet code-signed, so Windows SmartScreen shows *Windows protected your PC* until enough
 people have downloaded it (click **More info → Run anyway**). Some antivirus programs are also suspicious of any app
 that changes services and startup settings. The full source code is here for anyone to read, every release is built by
-GitHub from that code, and you can [check the checksum](#download-and-run). Code signing is on the
-[roadmap](docs/ROADMAP.md).
+GitHub from that code, and you can [check the checksum and proof of origin](#download-and-run). Featherweight is
+[applying for free code signing](docs/CODE_SIGNING.md) for open-source projects.
 </details>
 
 <details>
