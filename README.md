@@ -102,6 +102,7 @@ Featherweight changes Windows settings, so it's built around a few promises:
 | ❌ **No scare tactics** | No fake "PC health score", no registry cleaner, no driver updater. |
 
 It's open source: anyone can read exactly what it does. Security issues can be reported privately (see [SECURITY.md](SECURITY.md)).
+How releases are built and signed: [**Code signing policy**](docs/CODE_SIGNING.md).
 
 ## Download and run
 
@@ -113,7 +114,7 @@ It's open source: anyone can read exactly what it does. Security issues can be r
 1. Go to [**Releases**](../../releases) and download `Featherweight.exe` from the newest version.
 2. Double-click it. No installer is needed; it uses .NET Framework 4.8, which is built into Windows 10 (22H2) and 11.
 3. If Windows shows **"Windows protected your PC"**, click **More info → Run anyway**. This appears for new apps
-   that don't have many downloads yet. Featherweight is [applying for code signing](docs/CODE_SIGNING.md).
+   that don't have many downloads yet. Featherweight is applying for code signing ([Code signing policy](docs/CODE_SIGNING.md)).
 
 Featherweight opens as a normal user, so you can look around safely. When you optimize, undo or clean RAM,
 it asks to restart with administrator rights.
