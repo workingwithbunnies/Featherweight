@@ -52,6 +52,7 @@ jobs:
           }
           $notes += @("", "---", "**SHA-256** of ``Featherweight.exe``: ``$hash``",
             "", "**Built by GitHub from this repository** (build provenance): check a download with ``gh attestation verify Featherweight.exe -R workingwithbunnies/Featherweight``",
+            "", "[Code signing policy](https://github.com/workingwithbunnies/Featherweight/blob/main/docs/CODE_SIGNING.md)",
             "", "Windows may show *Windows protected your PC* for new downloads: click **More info → Run anyway**.")
           $notes | Set-Content release-notes.md -Encoding utf8
 
