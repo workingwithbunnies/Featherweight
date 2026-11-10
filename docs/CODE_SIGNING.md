@@ -38,11 +38,9 @@ and its data folder (see the README).
 
 ## Privacy policy
 
-Featherweight does not send any information about you or your PC anywhere. Its only network connection is optional,
-chosen by you on first start, and can be turned off in **Settings & about**: at most once a day it asks GitHub
-(`api.github.com`) for the latest version number and downloads the newest item descriptions (`knowledge.json`, a text
-file) from `raw.githubusercontent.com`. There is no telemetry, no analytics and no account. Diagnostics reports are
-created only when you ask, saved on your PC with your user and PC name removed, and shared only if you choose to.
+This program will not transfer any information to other networked systems unless specifically requested by the user
+or the person installing or operating it. Its only connection is an update check with GitHub, explained on first start
+and easy to switch off; there is no telemetry. Full details: [Privacy policy](PRIVACY.md).
 
 ## Reporting fake or tampered copies
 

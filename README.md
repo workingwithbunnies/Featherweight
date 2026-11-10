@@ -102,7 +102,8 @@ Featherweight changes Windows settings, so it's built around a few promises:
 | ❌ **No scare tactics** | No fake "PC health score", no registry cleaner, no driver updater. |
 
 It's open source: anyone can read exactly what it does. Security issues can be reported privately (see [SECURITY.md](SECURITY.md)).
-How releases are built and signed: [**Code signing policy**](docs/CODE_SIGNING.md).
+How releases are built and signed: [**Code signing policy**](docs/CODE_SIGNING.md). What the app does and doesn't
+send: [**Privacy policy**](docs/PRIVACY.md).
 
 ## Download and run
 

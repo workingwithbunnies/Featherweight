@@ -4,6 +4,11 @@ All notable changes to Featherweight are listed here. Versions follow [Semantic 
 
 ## [Unreleased]
 
+### Added
+- A full [privacy policy](docs/PRIVACY.md): what the update check sends (your IP address and the app version, as with
+  any website visit), that it is on by default and how to switch it off, what stays on your PC, and what happens only
+  when you click something.
+
 ## [0.1.0-alpha.3] - 2026-11-10
 
 ### Added
